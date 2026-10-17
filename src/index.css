@@ -1,1 +1,19 @@
 @import "tailwindcss";
+
+:root {
+  --f1-bg-dark: #080d1a;
+  --f1-bg-card: #0f172a;
+  --f1-primary: #004de6;
+  --f1-primary-hover: #003bb8;
+  --f1-secondary: #e8112d;
+  --f1-accent: #38bdf8;
+  --f1-badge-bg: rgba(0, 77, 230, 0.15);
+}
+
+/* Transição suave ao alternar de equipe */
+body {
+  background-color: var(--f1-bg-dark);
+  color: #f8fafc;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
