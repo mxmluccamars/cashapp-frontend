@@ -12,14 +12,14 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Lê do cache local ou inicia por padrão na Racing Bulls
+  // Lê do cache local ou inicia com a primeira escuderia padrão (ex: rb)
   const [themeId, setThemeId] = useState<string>(() => {
     return localStorage.getItem('cashapp_f1_theme') || 'rb';
   });
 
   const currentTheme = F1_THEMES[themeId] || F1_THEMES.rb;
 
-  // Atualiza as variáveis CSS no documento HTML sempre que a equipe muda
+  // Injeta as novas variáveis CSS dinamicamente no documento HTML
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--f1-bg-dark', currentTheme.bgDark);
@@ -27,8 +27,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty('--f1-primary', currentTheme.primary);
     root.style.setProperty('--f1-primary-hover', currentTheme.primaryHover);
     root.style.setProperty('--f1-secondary', currentTheme.secondary);
-    root.style.setProperty('--f1-accent', currentTheme.accent);
-    root.style.setProperty('--f1-badge-bg', currentTheme.badgeBg);
+    root.style.setProperty('--f1-terciary', currentTheme.terciary);
+    root.style.setProperty('--f1-primary-text', currentTheme.primaryText);
+    root.style.setProperty('--f1-secondary-text', currentTheme.secondaryText);
 
     localStorage.setItem('cashapp_f1_theme', themeId);
   }, [currentTheme, themeId]);

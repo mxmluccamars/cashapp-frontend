@@ -1,6 +1,7 @@
 import type { Category, Transaction, CreateTransactionDTO } from '../types';
 
-const BASE_URL = 'http://localhost:8000/api/v1';
+// Se existir a variável na nuvem (Vercel), usa ela. Se não, usa o localhost!
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export const api = {
   async getCategories(): Promise {

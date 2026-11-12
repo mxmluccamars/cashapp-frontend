@@ -7,38 +7,180 @@ export interface F1Theme {
   bgCard: string;       // Fundo dos cards e seções
   primary: string;      // Cor primária (botões principais, destaques)
   primaryHover: string;
-  secondary: string;    // Cor secundária (bordas, detalhes, acentos)
-  accent: string;       // Destaques e telemetria
-  badgeBg: string;      // Fundo sutil das tags
+  secondary: string;    // Cor secundária (bordas, detalhes, acentos, switches)
+  terciary: string;     // Detalhes, avatares, etc
+  primaryText: string;  // Texto primário (botões, textos, etc)
+  secondaryText: string;// Texto secundário (textos, etc)
 }
 
 export const F1_THEMES: Record<string, F1Theme> = {
-  rb: {
-    id: 'rb',
-    name: 'Visa Cash App RB',
-    subtitle: 'Racing Bulls F1 Team',
-    // Logo transparente do touro / equipe Racing Bulls
-    logoUrl: 'https://files.brandlogos.net/svg/KCGf0r4L58/Visa_Cash_App_Racing_Bulls_Formula_One_Team-logo-brandlogos-53d6d3.svg',
-    bgDark: '#080d1a',        // Azul escuro profundo
-    bgCard: '#0f172a',        // Slate azulado
-    primary: '#004de6',       // Azul Elétrico Racing Bulls
-    primaryHover: '#003bb8',
-    secondary: '#e8112d',     // Vermelho Touro / Fita
-    accent: '#38bdf8',        // Ciano de telemetria
-    badgeBg: 'rgba(0, 77, 230, 0.15)'
+  f1: {
+    id: 'f1',
+    name: 'F1',
+    subtitle: 'FIA Formula One World Championship',
+    logoUrl: 'https://files.brandlogos.net/svg/10O4bq5O8r/Formula_One_F1-logo-brandlogos-0f1028.svg',
+    bgDark: '#111111',        
+    bgCard: '#18181B',        
+    primary: '#E10600', 
+    primaryHover: '#bd1600', 
+    secondary: '#151515',
+    terciary: '#FFFFFF',
+    primaryText: '#F4F4F5',
+    secondaryText: '#A1A1AA',
+  },
+  redbull: {
+    id: 'redbull',
+    name: 'Red Bull',
+    subtitle: 'Oracle Red Bull Racing',
+    logoUrl: 'https://files.brandlogos.net/svg/2evITPu2ob/oracle-red-bull-racing-logo-brandlogos.net_l1rigy4u2.svg',
+    bgDark: '#0B0F19 ',        
+    bgCard: '#151B2B',        
+    primary: '#0600EF',       
+    primaryHover: '#26518d',
+    secondary: '#FF1801',            
+    terciary: '#FFD200',
+    primaryText: '#F8FAFC',
+    secondaryText: '#94A3B8',
   },
   mercedes: {
     id: 'mercedes',
-    name: 'Mercedes-AMG Petronas',
-    subtitle: 'Formula One Team',
-    // Logo clássico Mercedes-AMG Petronas
+    name: 'Mercedes',
+    subtitle: 'Mercedes-AMG Petronas Formula One Team',
     logoUrl: 'https://files.brandlogos.net/svg/6pHg9QdYGc/Mercedes-AMG_Petronas_F1-ONBJqzSJf_brandlogos.net.svg',
-    bgDark: '#0f090d',        // Preto Carbono
-    bgCard: '#13151c',        // Cinza grafite técnico
-    primary: '#00a19b',       // Verde Petronas / Turquesa
+    bgDark: '#0E1116',        
+    bgCard: '#191E26',     
+    primary: '#00D2BE',       
     primaryHover: '#00847f',
-    secondary: '#d1d5db',     // Prata Flechas de Prata
-    accent: '#22d3ee',        // Destaque de telemetria
-    badgeBg: 'rgba(0, 161, 155, 0.15)'
-  }
+    secondary: '#C0C0C0',   
+    terciary: '#FFFFFF',
+    primaryText: '#F3F4F6',
+    secondaryText: '#9CA3AF',
+  },
+  ferrari: {
+    id: 'ferrari',
+    name: 'Ferrari',
+    subtitle: 'Scuderia Ferrari HP',
+    logoUrl: 'https://files.brandlogos.net/svg/OeSUpbYXG3/scuderia-ferrari-logo-brandlogos.net_mudh9xgcl.svg',
+    bgDark: '#0D0D0D',        
+    bgCard: '#1A1A1A',        
+    primary: '#DC0000',       
+    primaryHover: '#00847f',
+    secondary: '#FFEB00',     
+    terciary: '#FFFFFF',
+    primaryText: '#F5F5F5',
+    secondaryText: '#A3A3A3',
+  },
+  mclaren: {
+    id: 'mclaren',
+    name: 'McLaren',
+    subtitle: 'McLaren Mastercard Formula 1 Team',
+    logoUrl: 'https://files.brandlogos.net/svg/uWbijj9njW/McLaren_Automotive-logo-brandlogos-2ddc0b.svg',
+    bgDark: '#F4F4F6',
+    bgCard: '#FFFFFF',
+    primary: '#FF7500', 
+    primaryHover: '#00847f',
+    secondary: '#0055FF',
+    terciary: '#111111',
+    primaryText: '#111827',
+    secondaryText: '#4B5563',
+  },
+  vcarb: {
+    id: 'vcarb',
+    name: 'Racing Bulls',
+    subtitle: 'Visa Cash App Racing Bulls Formula One Team',
+    logoUrl: 'https://files.brandlogos.net/svg/KCGf0r4L58/Visa_Cash_App_Racing_Bulls_Formula_One_Team-logo-brandlogos-53d6d3.svg',
+    bgDark: '#070A14',        
+    bgCard: '#121826',        
+    primary: '#1633FF',       
+    primaryHover: '#003bb8',
+    secondary: '#FFFFFF',     
+    terciary: '#FF3333',
+    primaryText: '#F8FAFC',
+    secondaryText: '#94A3B8',
+  },
+  alpine: {
+    id: 'alpine',
+    name: 'Alpine',
+    subtitle: 'BWT Alpine Formula One Team',
+    logoUrl: 'https://files.brandlogos.net/svg/p9rFMhuYOp/alpine-f1-team-logo-brandlogos.net_lzn2d2j9u.svg',
+    bgDark: '#F3F4F6',      
+    bgCard: '#FFFFFF',        
+    primary: '#0090FF',       
+    primaryHover: '#00847f',
+    secondary: '#FF007F',  
+    terciary: '#111827',
+    primaryText: '#0F172A',
+    secondaryText: '#475569',
+  },
+  haas: {
+    id: 'haas',
+    name: 'Haas',
+    subtitle: 'TGR Haas F1 Team',
+    logoUrl: 'https://files.brandlogos.net/svg/a9r8rO8ne5/TGR_Haas_F1_Team-logo_brandlogos.net_2586a0.svg',
+    bgDark: '#F5F5F7',     
+    bgCard: '#FFFFFF',     
+    primary: '#ED1B2D',    
+    primaryHover: '#00847f',
+    secondary: '#1E1E1E',     
+    terciary: '#555555',
+    primaryText: '#111111',
+    secondaryText: '#666666',
+  },
+  audi: {
+    id: 'audi',
+    name: 'Audi',
+    subtitle: 'Audi Revolut F1 Team',
+    logoUrl: 'https://files.brandlogos.net/svg/10O4bq5O8r/Audi_Revolut_F1_Team-logo-brandlogos-43c7ff.svg',
+    bgDark: '#0A0A0E',       
+    bgCard: '#15161B',      
+    primary: '#FF0000',       
+    primaryHover: '#00847f',
+    secondary: '#A3A7AF',    
+    terciary: '#FFFFFF',
+    primaryText: '#F3F4F6',
+    secondaryText: '#8C909A',
+  },
+  williams: {
+    id: 'williams',
+    name: 'Williams',
+    subtitle: 'Atlassian Williams F1 Team',
+    logoUrl: 'https://files.brandlogos.net/svg/a9r8rO8ne5/Atlassian_Williams_F1_Team-logo_brandlogos.net_8c2568.svg',
+    bgDark: '#F4F5F7',       
+    bgCard: '#FFFFFF',        
+    primary: '#005AFF',  
+    primaryHover: '#00847f',
+    secondary: '#00A3FF',     
+    terciary: '#111827',
+    primaryText: '#0F172A',
+    secondaryText: '#475569',
+  },
+  astonmartin: {
+    id: 'astonmartin',
+    name: 'Aston Martin',
+    subtitle: 'Aston Martin Aramco Formula One Team',
+    logoUrl: 'https://files.brandlogos.net/svg/KCGf0r4L58/Aston_Martin_Aramco_Formula_One_Team_2024-logo-brandlogos-046202.svg',
+    bgDark: '#F4F6F5',       
+    bgCard: '#FFFFFF',        
+    primary: '#006F62',  
+    primaryHover: '#00847f',
+    secondary: '#00FF87',   
+    terciary: '#111827',
+    primaryText: '#0A1C18',
+    secondaryText: '#4A5D57',
+  },
+  cadillac: {
+    id: 'cadillac',
+    name: 'Cadillac',
+    subtitle: 'Cadillac Formula 1 Team',
+    logoUrl: 'https://files.brandlogos.net/svg/KWGOdcgoGJ/cadillac-formula-1-team-logo-brandlogos.net_gjqui173v.svg',
+    bgDark: '#F4F5F7',    
+    bgCard: '#FFFFFF',       
+    primary: '#C5A880',     
+    primaryHover: '#C5A880',
+    secondary: '#1D232A',   
+    terciary: '#990000',
+    primaryText: '#111827',
+    secondaryText: '#4B5563',
+  },
 };
+
