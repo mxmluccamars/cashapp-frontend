@@ -17,7 +17,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('cashapp_f1_theme') || 'rb';
   });
 
-  const currentTheme = F1_THEMES[themeId] || F1_THEMES.redbull;
+  const currentTheme = F1_THEMES[themeId] || F1_THEMES.redbull; 
 
   // Injeta as novas variáveis CSS dinamicamente no documento HTML
   useEffect(() => {
