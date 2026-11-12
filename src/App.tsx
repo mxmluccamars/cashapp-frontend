@@ -202,7 +202,7 @@ export default function App() {
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-                      Type
+                      Type 
                     </label>
                     <select
                       value={type}
