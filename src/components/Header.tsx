@@ -1,5 +1,4 @@
 import { useTheme } from '../context/ThemeContext';
-import { Gauge } from 'lucide-react';
 
 interface HeaderProps {
   onOpenGarage?: () => void;
@@ -8,46 +7,58 @@ interface HeaderProps {
 export function Header({ onOpenGarage }: HeaderProps) {
   const { currentTheme } = useTheme();
 
+  // Usa a cor exclusiva do header se existir no tema, senão usa a cor padrão dos cards
+  const headerBg = currentTheme.bgHeader || currentTheme.bgCard;
+
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md bg-slate-950/80 border-b border-slate-800/80 px-4 py-3 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto flex items-center justify-between">
-        {/* Lado Esquerdo: Identidade do App */}
-        <div className="flex items-center gap-2.5">
-          <div 
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-xs"
-            style={{ backgroundColor: currentTheme.primary }}
+    <header
+      style={{
+        backgroundColor: headerBg,
+        borderBottomColor: currentTheme.secondary,
+      }}
+      className="relative w-full h-[100px] border-b transition-colors duration-300 px-4"
+    >
+      <div className="max-w-4xl mx-auto h-full flex items-center justify-between">
+        {/* Identidade da Escuderia / App */}
+        <div className="flex flex-col justify-center">
+          <span
+            style={{ color: currentTheme.secondaryText }}
+            className="text-[10px] font-bold uppercase tracking-widest"
           >
-            <Gauge className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-wider uppercase text-white flex items-center gap-1.5">
-              CashApp <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">F1</span>
-            </h1>
-            <p className="text-[11px] text-slate-400 font-medium">Telemetry Cockpit</p>
-          </div>
+            {currentTheme.subtitle}
+          </span>
+          <h1
+            style={{ color: currentTheme.primaryText }}
+            className="text-lg font-black tracking-tight leading-tight"
+          >
+            {currentTheme.name}
+          </h1>
         </div>
 
-        {/* Lado Direito: Logo Oficial da Escuderia Ativa */}
-        <div 
+        {/* Logo com 50px (50% dos 100px do Header) */}
+        <button
           onClick={onOpenGarage}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-slate-700 transition"
-          title="Clique para abrir a Garage e trocar de escuderia"
+          title="Trocar Escuderia na Garage"
+          className="h-[50px] flex items-center justify-center cursor-pointer transition-transform active:scale-95 focus:outline-none"
         >
           {currentTheme.logoUrl ? (
-            <img 
-              src={currentTheme.logoUrl} 
+            <img
+              src={currentTheme.logoUrl}
               alt={currentTheme.name}
-              className="h-7 max-w-[120px] object-contain drop-shadow-sm"
-              onError={(e) => {
-                // Fallback caso a imagem não carregue: oculta a tag de imagem quebrada
-                (e.target as HTMLElement).style.display = 'none';
-              }}
+              className="h-[50px] w-auto max-w-[140px] object-contain drop-shadow-md"
             />
-          ) : null}
-          <span className="text-xs font-semibold text-slate-200 hidden sm:inline">
-            {currentTheme.name}
-          </span>
-        </div>
+          ) : (
+            <div
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.primaryText,
+              }}
+              className="h-[50px] px-4 rounded-xl flex items-center justify-center font-black text-xs uppercase tracking-wider"
+            >
+              {currentTheme.id}
+            </div>
+          )}
+        </button>
       </div>
     </header>
   );

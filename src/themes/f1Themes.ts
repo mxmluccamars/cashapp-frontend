@@ -5,6 +5,7 @@ export interface F1Theme {
   logoUrl: string;      // URL da imagem/logo oficial na internet
   bgDark: string;       // Fundo principal do app
   bgCard: string;       // Fundo dos cards e seções
+  bgHeader?: string;
   primary: string;      // Cor primária (botões principais, destaques)
   primaryHover: string;
   secondary: string;    // Cor secundária (bordas, detalhes, acentos, switches)

@@ -1,41 +1,45 @@
-import type { Category, Transaction, CreateTransactionDTO } from '../types';
+import type {
+  Category,
+  PaymentMethod,
+  ContextItem,
+  LocationItem,
+  Goal,
+  Transaction,
+  TransactionCreate,
+} from '../types/finance';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
+async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Erro HTTP: ${response.status}`);
+  }
+
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
 export const api = {
-  async getCategories(): Promise<Category[]> {
-    const res = await fetch(`${BASE_URL}/categories/`);
-    if (!res.ok) throw new Error('Erro ao buscar categorias');
-    return res.json();
-  },
+  // Catálogos para os selects do Pit Stop
+  getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
+  getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment-methods/'),
+  getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
+  getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
+  getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
 
-  async getTransactions(): Promise<Transaction[]> {
-    const res = await fetch(`${BASE_URL}/transactions/`);
-    if (!res.ok) throw new Error('Erro ao buscar transações');
-    return res.json();
-  },
-
-  async createTransaction(payload: CreateTransactionDTO): Promise<Transaction> {
-    const res = await fetch(`${BASE_URL}/transactions/`, {
+  // Transações
+  getTransactions: (): Promise<Transaction[]> => request<Transaction[]>('/transactions/'),
+  createTransaction: (data: TransactionCreate): Promise<Transaction> =>
+    request<Transaction>('/transactions/', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.detail || 'Erro ao registrar transação');
-    }
-
-    return res.json();
-  },
-
-  async deleteTransaction(id: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}/transactions/${id}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) throw new Error('Erro ao deletar transação');
-  },
+      body: JSON.stringify(data),
+    }),
+  deleteTransaction: (id: string): Promise<void> =>
+    request<void>(`/transactions/${id}`, { method: 'DELETE' }),
 };
