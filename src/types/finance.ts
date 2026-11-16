@@ -14,7 +14,8 @@ export interface PaymentMethod {
   name: string;
   icon?: string;
   color?: string;
-  allows_installments?: boolean;
+  allows_installments?: boolean | number;
+  allow_installments?: boolean | number;
 }
 
 export interface ContextItem {

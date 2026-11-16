@@ -28,7 +28,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Catálogos para os selects do Pit Stop
   getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
-  getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment-methods/'),
+  getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
   getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
   getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
   getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),

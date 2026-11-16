@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import type {
   Category,
@@ -31,40 +31,41 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-
-  const [catalogsLoaded, setCatalogsLoaded] = useState(false);
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
 
-  // LAZY LOAD: Só faz GET na 1ª vez que uma tela (como o PitStop) pedir!
+  // Trava síncrona que impede loops de re-renderização no useEffect
+  const hasAttemptedLoad = useRef(false);
+
   const ensureCatalogsLoaded = useCallback(async () => {
-    if (catalogsLoaded || isLoadingCatalogs) return;
+    if (hasAttemptedLoad.current) return;
+    hasAttemptedLoad.current = true;
 
     setIsLoadingCatalogs(true);
     try {
+      // Usa catch individual para que um 404 em uma rota não quebre as outras!
       const [cats, pays, ctxs, locs, gls] = await Promise.all([
-        api.getCategories(),
-        api.getPaymentMethods(),
-        api.getContexts(),
-        api.getLocations(),
-        api.getGoals(),
+        api.getCategories().catch((err) => { console.warn('Falha em categories:', err); return []; }),
+        api.getPaymentMethods().catch((err) => { console.warn('Falha em payment-methods:', err); return []; }),
+        api.getContexts().catch((err) => { console.warn('Falha em contexts:', err); return []; }),
+        api.getLocations().catch((err) => { console.warn('Falha em locations:', err); return []; }),
+        api.getGoals().catch((err) => { console.warn('Falha em goals:', err); return []; }),
       ]);
+
       setCategories(cats);
       setPaymentMethods(pays);
       setContexts(ctxs);
       setLocations(locs);
       setGoals(gls);
-      setCatalogsLoaded(true);
-    } catch (error) {
-      console.error('Erro ao carregar catálogos:', error);
     } finally {
       setIsLoadingCatalogs(false);
     }
-  }, [catalogsLoaded, isLoadingCatalogs]);
+  }, []);
 
-  // Salva no backend e já insere na memória sem precisar dar GET tudo de novo
   const addTransaction = async (data: TransactionCreate) => {
-    const newTx = await api.createTransaction(data);
-    setTransactions((prev) => [newTx, ...prev]);
+    const res = await api.createTransaction(data);
+    // O endpoint POST /transactions/ pode retornar uma lista (parcelas) ou objeto único
+    const newItems = Array.isArray(res) ? res : [res];
+    setTransactions((prev) => [...newItems, ...prev]);
   };
 
   return (
