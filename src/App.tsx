@@ -29,7 +29,12 @@ export default function App() {
       }}
       className="min-h-screen transition-colors duration-300"
     >
-      {activeTab === 'home' && <HomePage onOpenGarage={() => handleTabChange('garage')} />}
+      {activeTab === 'home' && (
+        <HomePage
+          onOpenExtrato={() => handleTabChange('extrato')}
+          onSubScreenChange={setIsSubScreenOpen}
+        />
+      )}
       {activeTab === 'extrato' && <ExtratoPage />}
       {activeTab === 'telemetria' && <TelemetriaPage />}
       {activeTab === 'garage' && <GaragePage onSubScreenChange={setIsSubScreenOpen} />}

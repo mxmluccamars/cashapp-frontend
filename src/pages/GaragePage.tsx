@@ -142,11 +142,11 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
         }}
         className="p-5 rounded-3xl border relative overflow-hidden flex items-center justify-between"
       >
-        {/* Faixa de corrida no topo */}
+        {/* Faixa de corrida no topo
         <div
           style={{ backgroundColor: currentTheme.primary }}
           className="absolute top-0 left-0 right-0 h-1"
-        />
+        /> */}
 
         <div>
           <div className="flex items-center gap-1.5 mb-1">

@@ -8,6 +8,7 @@ import type {
   Goal,
   Transaction,
   TransactionCreate,
+  RecurringBill,
 } from '../types/finance';
 
 interface DataContextType {
@@ -17,10 +18,13 @@ interface DataContextType {
   locations: LocationItem[];
   goals: Goal[];
   transactions: Transaction[];
+  recurringBills: RecurringBill[];
   isLoadingCatalogs: boolean;
+  isLoadingTransactions: boolean;
   ensureCatalogsLoaded: () => Promise<void>;
+  ensureHomeLoaded: () => Promise<void>;
   addTransaction: (tx: TransactionCreate) => Promise<void>;
-  addCategory: (data: Omit<Category, 'id'>) => Promise<void>;
+  addCategory: (data: Omit<Category, 'id'>) => Promise<Category>;
   editCategory: (id: string, data: Partial<Omit<Category, 'id'>>) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
 
@@ -36,7 +40,11 @@ interface DataContextType {
   addPaymentMethod: (data: Omit<PaymentMethod, 'id'>) => Promise<void>;
   editPaymentMethod: (id: string, data: Partial<Omit<PaymentMethod, 'id'>>) => Promise<void>;
   removePaymentMethod: (id: string) => Promise<void>;
-  
+
+  addGoal: (data: Omit<Goal, 'id'>) => Promise<void>;
+  editGoal: (id: string, data: Partial<Omit<Goal, 'id'>>) => Promise<void>;
+  removeGoal: (id: string) => Promise<void>;
+
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -49,9 +57,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
+  const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const hasAttemptedHomeLoad = useRef(false);
 
   // Trava síncrona que impede loops de re-renderização no useEffect
   const hasAttemptedLoad = useRef(false);
+
+  
 
   const ensureCatalogsLoaded = useCallback(async () => {
     if (hasAttemptedLoad.current) return;
@@ -78,6 +91,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const ensureHomeLoaded = useCallback(async () => {
+    await ensureCatalogsLoaded();
+    if (hasAttemptedHomeLoad.current) return;
+    hasAttemptedHomeLoad.current = true;
+
+    setIsLoadingTransactions(true);
+    try {
+      const [txs, bills] = await Promise.all([
+        api.getTransactions().catch((err) => { console.warn('Falha em transactions:', err); return []; }),
+        api.getRecurringBills().catch((err) => { console.warn('Falha em recurring-bills:', err); return []; }),
+      ]);
+      setTransactions(txs);
+      setRecurringBills(bills);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  }, [ensureCatalogsLoaded]);
+
   const addTransaction = async (data: TransactionCreate) => {
     const res = await api.createTransaction(data);
     // O endpoint POST /transactions/ pode retornar uma lista (parcelas) ou objeto único
@@ -89,6 +120,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const addCategory = async (data: Omit<Category, 'id'>) => {
     const created = await api.createCategory(data);
     setCategories((prev) => [...prev, created]);
+    return created;
   };
 
   const editCategory = async (id: string, data: Partial<Omit<Category, 'id'>>) => {
@@ -150,6 +182,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setPaymentMethods((prev) => prev.filter((pm) => pm.id !== id));
   };
 
+  const addGoal = async (data: Omit<Goal, 'id'>) => {
+    const created = await api.createGoal(data);
+    setGoals((prev) => [...prev, created]);
+  };
+
+  const editGoal = async (id: string, data: Partial<Omit<Goal, 'id'>>) => {
+    const updated = await api.updateGoal(id, data);
+    setGoals((prev) => prev.map((g) => (g.id === id ? updated : g)));
+  };
+
+  const removeGoal = async (id: string) => {
+    await api.deleteGoal(id);
+    setGoals((prev) => prev.filter((g) => g.id !== id));
+  };
+
+  
+
   return (
     <DataContext.Provider
       value={{
@@ -160,7 +209,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         goals,
         transactions,
         isLoadingCatalogs,
+        recurringBills,
         ensureCatalogsLoaded,
+        ensureHomeLoaded,
+        isLoadingTransactions,
         addTransaction,
         addCategory,
         editCategory,
@@ -174,6 +226,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addPaymentMethod,
         editPaymentMethod,
         removePaymentMethod,
+        addGoal,
+        editGoal,
+        removeGoal,
       }}
     >
       {children}

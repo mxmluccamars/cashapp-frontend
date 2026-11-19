@@ -65,3 +65,13 @@ export interface Transaction extends Omit<TransactionCreate, 'installments'> {
   location?: LocationItem | null;
   goal?: Goal | null;
 }
+
+export interface RecurringBill {
+  id: string;
+  name: string;
+  amount: number | string;
+  due_day: number;
+  category_id?: string | null;
+  payment_method_id?: string | null;
+  is_active: boolean;
+}

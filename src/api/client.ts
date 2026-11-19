@@ -6,6 +6,7 @@ import type {
   Goal,
   Transaction,
   TransactionCreate,
+  RecurringBill,
 } from '../types/finance';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -31,7 +32,7 @@ export const api = {
   // getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
   // getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
   // getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
-  getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
+  // getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
 
   // Transações
   getTransactions: (): Promise<Transaction[]> => request<Transaction[]>('/transactions/'),
@@ -110,6 +111,26 @@ export const api = {
     }),
   deletePaymentMethod: (id: string): Promise<void> =>
     request<void>(`/payment_methods/${id}`, { method: 'DELETE' }),
+
+  getRecurringBills: (): Promise<RecurringBill[]> =>
+    request<RecurringBill[]>('/recurring_bills/'),
+
+  // Caixinhas / Metas (CRUD)
+  getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
+  createGoal: (data: Omit<Goal, 'id'>): Promise<Goal> =>
+    request<Goal>('/goals/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateGoal: (id: string, data: Partial<Omit<Goal, 'id'>>): Promise<Goal> =>
+    request<Goal>(`/goals/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteGoal: (id: string): Promise<void> =>
+    request<void>(`/goals/${id}`, { method: 'DELETE' }),
 };
+
+
 
 
