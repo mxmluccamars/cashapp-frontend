@@ -1,6 +1,6 @@
 import { icons, type LucideProps } from 'lucide-react';
 
-interface DynamicIconProps extends LucideProps {
+interface DynamicIconProps extends Omit<LucideProps, 'name'> {
   name?: string | null;
 }
 
