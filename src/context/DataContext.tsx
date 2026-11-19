@@ -23,6 +23,19 @@ interface DataContextType {
   addCategory: (data: Omit<Category, 'id'>) => Promise<void>;
   editCategory: (id: string, data: Partial<Omit<Category, 'id'>>) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
+
+  addContext: (data: { name: string }) => Promise<void>;
+  editContext: (id: string, data: { name: string }) => Promise<void>;
+  removeContext: (id: string) => Promise<void>;
+
+  addLocation: (data: Omit<LocationItem, 'id'>) => Promise<void>;
+  editLocation: (id: string, data: Partial<Omit<LocationItem, 'id'>>) => Promise<void>;
+  removeLocation: (id: string) => Promise<void>;
+
+
+  addPaymentMethod: (data: Omit<PaymentMethod, 'id'>) => Promise<void>;
+  editPaymentMethod: (id: string, data: Partial<Omit<PaymentMethod, 'id'>>) => Promise<void>;
+  removePaymentMethod: (id: string) => Promise<void>;
   
 }
 
@@ -88,6 +101,55 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setCategories((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const addContext = async (data: { name: string }) => {
+    const created = await api.createContext(data);
+    setContexts((prev) => [...prev, created]);
+  };
+
+  const editContext = async (id: string, data: { name: string }) => {
+    const updated = await api.updateContext(id, data);
+    setContexts((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  };
+
+  const removeContext = async (id: string) => {
+    await api.deleteContext(id);
+    setContexts((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const addLocation = async (data: Omit<LocationItem, 'id'>) => {
+    const created = await api.createLocation(data);
+    setLocations((prev) => [...prev, created]);
+  };
+
+  const editLocation = async (id: string, data: Partial<Omit<LocationItem, 'id'>>) => {
+    const updated = await api.updateLocation(id, data);
+    setLocations((prev) => prev.map((l) => (l.id === id ? updated : l)));
+  };
+
+  const removeLocation = async (id: string) => {
+    await api.deleteLocation(id);
+    setLocations((prev) => prev.filter((l) => l.id !== id));
+  };
+
+
+  const addPaymentMethod = async (data: Omit<PaymentMethod, 'id'>) => {
+    const created = await api.createPaymentMethod(data);
+    setPaymentMethods((prev) => [...prev, created]);
+  };
+
+  const editPaymentMethod = async (
+    id: string,
+    data: Partial<Omit<PaymentMethod, 'id'>>
+  ) => {
+    const updated = await api.updatePaymentMethod(id, data);
+    setPaymentMethods((prev) => prev.map((pm) => (pm.id === id ? updated : pm)));
+  };
+
+  const removePaymentMethod = async (id: string) => {
+    await api.deletePaymentMethod(id);
+    setPaymentMethods((prev) => prev.filter((pm) => pm.id !== id));
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -103,6 +165,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addCategory,
         editCategory,
         removeCategory,
+        addContext,
+        editContext,
+        removeContext,
+        addLocation,
+        editLocation,
+        removeLocation,
+        addPaymentMethod,
+        editPaymentMethod,
+        removePaymentMethod,
       }}
     >
       {children}

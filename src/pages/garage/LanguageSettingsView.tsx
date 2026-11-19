@@ -13,7 +13,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
   const currentLang = i18n.language?.slice(0, 2) || 'pt';
 
   return (
-    <div className="p-5 pb-28 max-w-md mx-auto flex flex-col gap-5">
+    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
       {/* Header da Sub-tela */}
       <div className="flex items-center gap-3">
         <button

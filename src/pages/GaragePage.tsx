@@ -15,6 +15,9 @@ import { SUPPORTED_LANGUAGES } from '../i18n';
 import { ThemeSettingsView } from './garage/ThemeSettingsView';
 import { LanguageSettingsView } from './garage/LanguageSettingsView';
 import { CategoriesCrudView } from './garage/CategoriesCrudView';
+import { ContextsCrudView } from './garage/ContextsCrudView';
+import { LocationsCrudView } from './garage/LocationsCrudView';
+import { PaymentsCrudView } from './garage/PaymentsCrudView';
 
 type GarageSection =
   | 'menu'
@@ -55,6 +58,18 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
 
   if (section === 'categories') {
     return <CategoriesCrudView onBack={() => setSection('menu')} />;
+  }
+
+  if (section === 'contexts') {
+    return <ContextsCrudView onBack={() => setSection('menu')} />;
+  }
+
+  if (section === 'locations') {
+    return <LocationsCrudView onBack={() => setSection('menu')} />;
+  }
+
+  if (section === 'payments') {
+    return <PaymentsCrudView onBack={() => setSection('menu')} />;
   }
 
   // Placeholder temporário para os 4 CRUDs que vamos montar na sequência

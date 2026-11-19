@@ -9,7 +9,7 @@ export function ThemeSettingsView({ onBack }: ThemeSettingsViewProps) {
   const { currentTheme, availableThemes, setTheme } = useTheme();
 
   return (
-    <div className="p-5 pb-28 max-w-md mx-auto flex flex-col gap-5">
+    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
       {/* Header da Sub-tela */}
       <div className="flex items-center gap-3">
         <button

@@ -28,9 +28,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Catálogos para os selects do Pit Stop
   // getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
-  getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
-  getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
-  getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
+  // getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
+  // getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
+  // getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
   getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
 
   // Transações
@@ -58,6 +58,58 @@ export const api = {
     }),
   deleteCategory: (id: string): Promise<void> =>
     request<void>(`/categories/${id}`, { method: 'DELETE' }),
+
+
+  // Contextos (CRUD)
+  getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
+  createContext: (data: { name: string }): Promise<ContextItem> =>
+    request<ContextItem>('/contexts/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateContext: (id: string, data: { name: string }): Promise<ContextItem> =>
+    request<ContextItem>(`/contexts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteContext: (id: string): Promise<void> =>
+    request<void>(`/contexts/${id}`, { method: 'DELETE' }),
+
+
+  // Locais (CRUD)
+  getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
+  createLocation: (data: Omit<LocationItem, 'id'>): Promise<LocationItem> =>
+    request<LocationItem>('/locations/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateLocation: (id: string, data: Partial<Omit<LocationItem, 'id'>>): Promise<LocationItem> =>
+    request<LocationItem>(`/locations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteLocation: (id: string): Promise<void> =>
+    request<void>(`/locations/${id}`, { method: 'DELETE' }),
+
+
+  // Formas de Pagamento (CRUD)
+  getPaymentMethods: (): Promise<PaymentMethod[]> =>
+    request<PaymentMethod[]>('/payment_methods/'),
+  createPaymentMethod: (data: Omit<PaymentMethod, 'id'>): Promise<PaymentMethod> =>
+    request<PaymentMethod>('/payment_methods/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updatePaymentMethod: (
+    id: string,
+    data: Partial<Omit<PaymentMethod, 'id'>>
+  ): Promise<PaymentMethod> =>
+    request<PaymentMethod>(`/payment_methods/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deletePaymentMethod: (id: string): Promise<void> =>
+    request<void>(`/payment_methods/${id}`, { method: 'DELETE' }),
 };
 
 
