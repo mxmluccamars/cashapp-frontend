@@ -35,7 +35,7 @@ export default function App() {
           onSubScreenChange={setIsSubScreenOpen}
         />
       )}
-      {activeTab === 'extrato' && <ExtratoPage />}
+      {activeTab === 'extrato' && (<ExtratoPage onSubScreenChange={setIsSubScreenOpen} />)}
       {activeTab === 'telemetria' && <TelemetriaPage />}
       {activeTab === 'garage' && <GaragePage onSubScreenChange={setIsSubScreenOpen} />}
       {activeTab === 'pitstop' && <PitStopPage onClose={() => setActiveTab(previousTab)} />}

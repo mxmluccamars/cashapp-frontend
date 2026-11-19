@@ -42,6 +42,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  // Transações (Update e Delete)
+  updateTransaction: (
+    id: string,
+    data: Partial<TransactionCreate>
+  ): Promise<Transaction> =>
+    request<Transaction>(`/transactions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   deleteTransaction: (id: string): Promise<void> =>
     request<void>(`/transactions/${id}`, { method: 'DELETE' }),
 

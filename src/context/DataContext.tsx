@@ -23,7 +23,11 @@ interface DataContextType {
   isLoadingTransactions: boolean;
   ensureCatalogsLoaded: () => Promise<void>;
   ensureHomeLoaded: () => Promise<void>;
+
   addTransaction: (tx: TransactionCreate) => Promise<void>;
+  editTransaction: (id: string, data: Partial<TransactionCreate>) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
+
   addCategory: (data: Omit<Category, 'id'>) => Promise<Category>;
   editCategory: (id: string, data: Partial<Omit<Category, 'id'>>) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
@@ -119,6 +123,16 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     // O endpoint POST /transactions/ pode retornar uma lista (parcelas) ou objeto único
     const newItems = Array.isArray(res) ? res : [res];
     setTransactions((prev) => [...newItems, ...prev]);
+  };
+
+  const editTransaction = async (id: string, data: Partial<TransactionCreate>) => {
+    const updated = await api.updateTransaction(id, data);
+    setTransactions((prev) => prev.map((tx) => (tx.id === id ? updated : tx)));
+  };
+
+  const removeTransaction = async (id: string) => {
+    await api.deleteTransaction(id);
+    setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
   // Dentro do DataProvider:
@@ -238,6 +252,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ensureHomeLoaded,
         isLoadingTransactions,
         addTransaction,
+        editTransaction,
+        removeTransaction,
         addCategory,
         editCategory,
         removeCategory,
