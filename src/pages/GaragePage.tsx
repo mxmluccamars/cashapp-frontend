@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronRight,
   Palette,
@@ -25,10 +25,20 @@ type GarageSection =
   | 'locations'
   | 'payments';
 
-export function GaragePage() {
+interface GaragePageProps {
+  onSubScreenChange?: (isOpen: boolean) => void;
+}
+
+export function GaragePage({ onSubScreenChange }: GaragePageProps) {
   const { currentTheme } = useTheme();
   const { t, i18n } = useTranslation();
   const [section, setSection] = useState<GarageSection>('menu');
+
+  useEffect(() => {
+    onSubScreenChange?.(section !== 'menu');
+    return () => onSubScreenChange?.(false);
+  }, [section, onSubScreenChange]);
+
 
   const currentLangCode = i18n.language?.slice(0, 2) || 'pt';
   const currentLangObj =

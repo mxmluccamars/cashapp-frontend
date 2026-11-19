@@ -11,11 +11,13 @@ export default function App() {
   const { currentTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [previousTab, setPreviousTab] = useState<TabType>('home');
+  const [isSubScreenOpen, setIsSubScreenOpen] = useState(false);
 
   const handleTabChange = (nextTab: TabType) => {
     if (nextTab === 'pitstop') {
-      setPreviousTab(activeTab); // Guarda onde você estava para voltar ao fechar o Pit Stop
+      setPreviousTab(activeTab);
     }
+    setIsSubScreenOpen(false);
     setActiveTab(nextTab);
   };
 
@@ -27,14 +29,14 @@ export default function App() {
       }}
       className="min-h-screen transition-colors duration-300"
     >
-      {activeTab === 'home' && <HomePage onOpenGarage={() => setActiveTab('garage')} />}
+      {activeTab === 'home' && <HomePage onOpenGarage={() => handleTabChange('garage')} />}
       {activeTab === 'extrato' && <ExtratoPage />}
       {activeTab === 'telemetria' && <TelemetriaPage />}
-      {activeTab === 'garage' && <GaragePage />}
+      {activeTab === 'garage' && <GaragePage onSubScreenChange={setIsSubScreenOpen} />}
       {activeTab === 'pitstop' && <PitStopPage onClose={() => setActiveTab(previousTab)} />}
 
-      {/* A barra inferior aparece apenas nas 4 abas raiz */}
-      {activeTab !== 'pitstop' && (
+      {/* Barra inferior aparece apenas nas 4 telas raiz (fora do Pit Stop e fora de sub-telas) */}
+      {activeTab !== 'pitstop' && !isSubScreenOpen && (
         <BottomNav activeTab={activeTab} onChangeTab={handleTabChange} />
       )}
     </div>
