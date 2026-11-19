@@ -11,23 +11,89 @@ import type {
 } from '../types/finance';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const TOKEN_STORAGE_KEY = 'cashapp_auth_token';
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+export const AUTH_UNAUTHORIZED_EVENT = 'cashapp:unauthorized';
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Erro HTTP: ${response.status}`);
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
+/** Verifica localmente pela data `exp` do JWT se os 7 dias já venceram */
+export function hasValidLocalToken(): boolean {
+  const token = getAuthToken();
+  if (!token) return false;
+  try {
+    const payloadBase64 = token.split('.')[1];
+    if (!payloadBase64) return false;
+    const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+    if (typeof payload.exp !== 'number') return false;
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    if (payload.exp <= nowInSeconds) {
+      clearAuthToken();
+      return false;
+    }
+    return true;
+  } catch {
+    clearAuthToken();
+    return false;
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    // Se não for a própria tentativa de login, derruba a sessão imediatamente
+    if (!endpoint.startsWith('/auth/login')) {
+      clearAuthToken();
+      window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+    }
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.detail || 'Sessão expirada. Digite seu PIN.');
+  }
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.detail || `Erro ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json();
 }
 
 export const api = {
+  // Autenticação por PIN
+  login: (pin: string): Promise<{ access_token: string; token_type: string; expires_at: string }> =>
+    request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    }),
+    
   // Catálogos para os selects do Pit Stop
   // getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
   // getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
