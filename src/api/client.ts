@@ -27,7 +27,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   // Catálogos para os selects do Pit Stop
-  getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
+  // getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
   getPaymentMethods: (): Promise<PaymentMethod[]> => request<PaymentMethod[]>('/payment_methods/'),
   getContexts: (): Promise<ContextItem[]> => request<ContextItem[]>('/contexts/'),
   getLocations: (): Promise<LocationItem[]> => request<LocationItem[]>('/locations/'),
@@ -42,4 +42,22 @@ export const api = {
     }),
   deleteTransaction: (id: string): Promise<void> =>
     request<void>(`/transactions/${id}`, { method: 'DELETE' }),
+
+
+  // Categorias (CRUD)
+  getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
+  createCategory: (data: Omit<Category, 'id'>): Promise<Category> =>
+    request<Category>('/categories/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCategory: (id: string, data: Partial<Omit<Category, 'id'>>): Promise<Category> =>
+    request<Category>(`/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteCategory: (id: string): Promise<void> =>
+    request<void>(`/categories/${id}`, { method: 'DELETE' }),
 };
+
+

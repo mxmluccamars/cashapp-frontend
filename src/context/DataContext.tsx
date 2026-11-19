@@ -20,6 +20,10 @@ interface DataContextType {
   isLoadingCatalogs: boolean;
   ensureCatalogsLoaded: () => Promise<void>;
   addTransaction: (tx: TransactionCreate) => Promise<void>;
+  addCategory: (data: Omit<Category, 'id'>) => Promise<void>;
+  editCategory: (id: string, data: Partial<Omit<Category, 'id'>>) => Promise<void>;
+  removeCategory: (id: string) => Promise<void>;
+  
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -68,6 +72,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => [...newItems, ...prev]);
   };
 
+  // Dentro do DataProvider:
+  const addCategory = async (data: Omit<Category, 'id'>) => {
+    const created = await api.createCategory(data);
+    setCategories((prev) => [...prev, created]);
+  };
+
+  const editCategory = async (id: string, data: Partial<Omit<Category, 'id'>>) => {
+    const updated = await api.updateCategory(id, data);
+    setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  };
+
+  const removeCategory = async (id: string) => {
+    await api.deleteCategory(id);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -80,6 +100,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isLoadingCatalogs,
         ensureCatalogsLoaded,
         addTransaction,
+        addCategory,
+        editCategory,
+        removeCategory,
       }}
     >
       {children}

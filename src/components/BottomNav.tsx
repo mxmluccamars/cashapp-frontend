@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { Home, Flag, BarChart3, Settings, Plus } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 export type TabType = 'home' | 'extrato' | 'pitstop' | 'telemetria' | 'garage';
 
@@ -10,13 +12,52 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
   const { currentTheme } = useTheme();
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  // Sempre mostra a barra ao trocar de aba
+  useEffect(() => {
+    setIsVisible(true);
+    lastScrollY.current = window.scrollY;
+  }, [activeTab]);
+
+  useEffect(() => {
+    const HIDE_THRESHOLD = 5; // Precisa rolar 60px para baixo para sumir
+    const SHOW_THRESHOLD = 25; // Rola só 25px para cima e ela já volta
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Respiro no topo: nos primeiros 80px ela sempre fica visível
+      if (currentScrollY <= 40) {
+        setIsVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      const diff = currentScrollY - lastScrollY.current;
+
+      if (diff > HIDE_THRESHOLD) {
+        setIsVisible(false);
+        lastScrollY.current = currentScrollY;
+      } else if (diff < -SHOW_THRESHOLD) {
+        setIsVisible(true);
+        lastScrollY.current = currentScrollY;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const { t } = useTranslation();
 
   const navItems = [
-    { id: 'home' as TabType, label: 'Home', icon: Home },
-    { id: 'extrato' as TabType, label: 'Extrato', icon: Flag },
-    { id: 'pitstop' as TabType, label: 'Pit Stop', isCenter: true },
-    { id: 'telemetria' as TabType, label: 'Telemetria', icon: BarChart3 },
-    { id: 'garage' as TabType, label: 'Garage', icon: Settings },
+    { id: 'home' as TabType, label: t('nav.home'), icon: Home },
+    { id: 'extrato' as TabType, label: t('nav.extrato'), icon: Flag },
+    { id: 'pitstop' as TabType, label: t('nav.pitstop'), isCenter: true },
+    { id: 'telemetria' as TabType, label: t('nav.telemetria'), icon: BarChart3 },
+    { id: 'garage' as TabType, label: t('nav.garage'), icon: Settings },
   ];
 
   return (
@@ -25,7 +66,11 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
         backgroundColor: currentTheme.bgCard,
         borderTopColor: currentTheme.secondary,
       }}
-      className="fixed bottom-0 left-0 right-0 h-20 border-t px-2 z-50 transition-colors duration-300"
+      className={`fixed bottom-0 left-0 right-0 h-20 border-t px-2 z-50 transition-all duration-500 ease-in-out ${
+        isVisible
+          ? 'translate-y-0 opacity-100'
+          : 'translate-y-32 opacity-0 pointer-events-none'
+      }`}
     >
       <div className="max-w-md mx-auto h-full grid grid-cols-5 items-center">
         {navItems.map((item) => {
@@ -42,7 +87,6 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
                   }}
                   className="w-16 h-16 rounded-full border-[5px] flex items-center justify-center transition-transform active:scale-90 cursor-pointer relative"
                 >
-                  {/* Aro interno simulando a faixa Pirelli e roda */}
                   <div
                     style={{ borderColor: currentTheme.secondary }}
                     className="w-11 h-11 rounded-full border border-dashed flex items-center justify-center"

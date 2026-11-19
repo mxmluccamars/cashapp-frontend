@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Home",
+    "extrato": "Laps",
+    "pitstop": "Pit Stop",
+    "telemetria": "Telemetry",
+    "garage": "Garage"
+  },
+  "pitstop": {
+    "subtitle": "Box Confirmed",
+    "title": "New Pit Stop",
+    "expense": "Expense",
+    "income": "Income",
+    "amount": "Total Amount (R$)",
+    "description": "Description",
+    "date": "Date",
+    "category": "Category",
+    "paymentExpense": "Payment Method",
+    "paymentIncome": "Received via",
+    "installments": "Installments",
+    "installmentsDisplay": "{{count}}x installments of R$ {{value}}",
+    "context": "Context",
+    "location": "Location",
+    "confirmExpense": "Confirm Expense",
+    "confirmIncome": "Confirm Income"
+  },
+  "garage": {
+    "title": "Garage",
+    "language": "App Language"
+  }
+}

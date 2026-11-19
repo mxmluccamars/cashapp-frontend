@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Home",
+    "extrato": "Extrato",
+    "pitstop": "Pit Stop",
+    "telemetria": "Telemetria",
+    "garage": "Garage"
+  },
+  "pitstop": {
+    "subtitle": "Box Confirmado",
+    "title": "Novo Pit Stop",
+    "expense": "Saída (Despesa)",
+    "income": "Entrada (Receita)",
+    "amount": "Valor Total (R$)",
+    "description": "Descrição",
+    "date": "Data",
+    "category": "Categoria",
+    "paymentExpense": "Forma de Pagamento",
+    "paymentIncome": "Recebido via",
+    "installments": "Número de Parcelas",
+    "installmentsDisplay": "{{count}}x parcelas de R$ {{value}}",
+    "context": "Contexto",
+    "location": "Local / Lugar",
+    "confirmExpense": "Confirmar Saída",
+    "confirmIncome": "Confirmar Entrada"
+  },
+  "garage": {
+    "title": "Garage",
+    "language": "Idioma do App"
+  }
+}

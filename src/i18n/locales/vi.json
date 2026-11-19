@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "extrato": "Lịch sử",
+    "pitstop": "Pit Stop",
+    "telemetria": "Thống kê",
+    "garage": "Cài đặt"
+  },
+  "pitstop": {
+    "subtitle": "Xác nhận vào Pit",
+    "title": "Giao dịch mới",
+    "expense": "Chi tiêu",
+    "income": "Thu nhập",
+    "amount": "Tổng số tiền (R$)",
+    "description": "Mô tả",
+    "date": "Ngày",
+    "category": "Danh mục",
+    "paymentExpense": "Phương thức thanh toán",
+    "paymentIncome": "Nhận qua",
+    "installments": "Số kỳ trả góp",
+    "installmentsDisplay": "{{count}} kỳ x R$ {{value}}",
+    "context": "Ngữ cảnh",
+    "location": "Địa điểm",
+    "confirmExpense": "Xác nhận Chi tiêu",
+    "confirmIncome": "Xác nhận Thu nhập"
+  },
+  "garage": {
+    "title": "Cài đặt",
+    "language": "Ngôn ngữ ứng dụng"
+  }
+}

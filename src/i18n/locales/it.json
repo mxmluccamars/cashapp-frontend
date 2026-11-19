@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Home",
+    "extrato": "Giri",
+    "pitstop": "Pit Stop",
+    "telemetria": "Telemetria",
+    "garage": "Box"
+  },
+  "pitstop": {
+    "subtitle": "Box Confermato",
+    "title": "Nuovo Pit Stop",
+    "expense": "Uscita (Spesa)",
+    "income": "Entrata (Ricavo)",
+    "amount": "Importo Totale (R$)",
+    "description": "Descrizione",
+    "date": "Data",
+    "category": "Categoria",
+    "paymentExpense": "Metodo di Pagamento",
+    "paymentIncome": "Ricevuto tramite",
+    "installments": "Numero di Rate",
+    "installmentsDisplay": "{{count}}x rate da R$ {{value}}",
+    "context": "Contesto",
+    "location": "Luogo",
+    "confirmExpense": "Conferma Uscita",
+    "confirmIncome": "Conferma Entrata"
+  },
+  "garage": {
+    "title": "Box",
+    "language": "Lingua dell'App"
+  }
+}

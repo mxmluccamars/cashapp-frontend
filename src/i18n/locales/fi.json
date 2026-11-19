@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "home": "Koti",
+    "extrato": "Kierrokset",
+    "pitstop": "Varikko",
+    "telemetria": "Telemetria",
+    "garage": "Talli"
+  },
+  "pitstop": {
+    "subtitle": "Varikkopysähdys",
+    "title": "Uusi Tapahtuma",
+    "expense": "Meno",
+    "income": "Tulo",
+    "amount": "Summa (R$)",
+    "description": "Kuvaus",
+    "date": "Päivämäärä",
+    "category": "Kategoria",
+    "paymentExpense": "Maksutapa",
+    "paymentIncome": "Vastaanotettu",
+    "installments": "Maksuerät",
+    "installmentsDisplay": "{{count}}x erää à R$ {{value}}",
+    "context": "Konteksti",
+    "location": "Sijainti",
+    "confirmExpense": "Vahvista Meno",
+    "confirmIncome": "Vahvista Tulo"
+  },
+  "garage": {
+    "title": "Talli",
+    "language": "Sovelluksen Kieli"
+  }
+}
