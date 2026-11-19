@@ -45,6 +45,11 @@ interface DataContextType {
   editGoal: (id: string, data: Partial<Omit<Goal, 'id'>>) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
 
+
+  addRecurringBill: (data: Omit<RecurringBill, 'id'>) => Promise<void>;
+  editRecurringBill: (id: string, data: Partial<Omit<RecurringBill, 'id'>>) => Promise<void>;
+  removeRecurringBill: (id: string) => Promise<void>;
+
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -197,6 +202,25 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setGoals((prev) => prev.filter((g) => g.id !== id));
   };
 
+
+  const addRecurringBill = async (data: Omit<RecurringBill, 'id'>) => {
+    const created = await api.createRecurringBill(data);
+    setRecurringBills((prev) => [...prev, created]);
+  };
+
+  const editRecurringBill = async (
+    id: string,
+    data: Partial<Omit<RecurringBill, 'id'>>
+  ) => {
+    const updated = await api.updateRecurringBill(id, data);
+    setRecurringBills((prev) => prev.map((b) => (b.id === id ? updated : b)));
+  };
+
+  const removeRecurringBill = async (id: string) => {
+    await api.deleteRecurringBill(id);
+    setRecurringBills((prev) => prev.filter((b) => b.id !== id));
+  };
+
   
 
   return (
@@ -229,6 +253,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         addGoal,
         editGoal,
         removeGoal,
+        addRecurringBill,
+        editRecurringBill,
+        removeRecurringBill,
       }}
     >
       {children}

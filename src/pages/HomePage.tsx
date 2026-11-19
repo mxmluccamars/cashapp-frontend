@@ -7,6 +7,7 @@ import { BalanceCard } from '../components/home/BalanceCard';
 import { QuickShortcuts } from '../components/home/QuickShortcuts';
 import { RecentTransactions } from '../components/home/RecentTransactions';
 import { GoalsView } from './home/GoalsView';
+import { RecurringBillsView } from './home/RecurringBillsView';
 
 interface HomePageProps {
   onOpenExtrato: () => void;
@@ -129,26 +130,20 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
   const activeBills = recurringBills.filter((b) => b.is_active);
   const activeBillsTotal = activeBills.reduce((sum, b) => sum + Number(b.amount), 0);
 
-  // Placeholders temporários para as telas de Caixinhas e Recorrentes (próximo passo)
-  // if (subScreen !== 'main') {
-  //   return (
-  //     <div className="p-5 pb-10 max-w-md mx-auto">
-  //       <button
-  //         onClick={() => setSubScreen('main')}
-  //         style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
-  //         className="px-4 py-2 rounded-xl text-xs font-bold mb-6 cursor-pointer"
-  //       >
-  //         ← Voltar para Home
-  //       </button>
-  //       <h2 style={{ color: currentTheme.primaryText }} className="text-xl font-black uppercase">
-  //         Em construção: {subScreen === 'goals' ? 'Caixinhas' : 'Contas Recorrentes'}
-  //       </h2>
-  //     </div>
-  //   );
-  // }
-
   if (subScreen === 'goals') {
     return <GoalsView onBack={() => setSubScreen('main')} />;
+  }
+
+  if (subScreen === 'recurring') {
+    return (
+      <RecurringBillsView
+        year={year}
+        month={month}
+        onPrevMonth={handlePrevMonth}
+        onNextMonth={handleNextMonth}
+        onBack={() => setSubScreen('main')}
+      />
+    );
   }
 
   return (

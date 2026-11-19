@@ -7,6 +7,7 @@ import type {
   Transaction,
   TransactionCreate,
   RecurringBill,
+
 } from '../types/finance';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -112,9 +113,6 @@ export const api = {
   deletePaymentMethod: (id: string): Promise<void> =>
     request<void>(`/payment_methods/${id}`, { method: 'DELETE' }),
 
-  getRecurringBills: (): Promise<RecurringBill[]> =>
-    request<RecurringBill[]>('/recurring_bills/'),
-
   // Caixinhas / Metas (CRUD)
   getGoals: (): Promise<Goal[]> => request<Goal[]>('/goals/'),
   createGoal: (data: Omit<Goal, 'id'>): Promise<Goal> =>
@@ -129,6 +127,26 @@ export const api = {
     }),
   deleteGoal: (id: string): Promise<void> =>
     request<void>(`/goals/${id}`, { method: 'DELETE' }),
+
+
+  // Contas Recorrentes (CRUD)
+  getRecurringBills: (): Promise<RecurringBill[]> =>
+    request<RecurringBill[]>('/recurring_bills/'),
+  createRecurringBill: (data: Omit<RecurringBill, 'id'>): Promise<RecurringBill> =>
+    request<RecurringBill>('/recurring_bills/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateRecurringBill: (
+    id: string,
+    data: Partial<Omit<RecurringBill, 'id'>>
+  ): Promise<RecurringBill> =>
+    request<RecurringBill>(`/recurring-_bills/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteRecurringBill: (id: string): Promise<void> =>
+    request<void>(`/recurring_bills/${id}`, { method: 'DELETE' }),
 };
 
 

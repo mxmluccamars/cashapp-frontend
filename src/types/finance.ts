@@ -52,6 +52,7 @@ export interface TransactionCreate {
   location_id?: string | null;
   goal_id?: string | null;
   installments?: number;
+  recurring_bill_id?: string | null;
 }
 
 export interface Transaction extends Omit<TransactionCreate, 'installments'> {
@@ -64,6 +65,7 @@ export interface Transaction extends Omit<TransactionCreate, 'installments'> {
   context?: ContextItem | null;
   location?: LocationItem | null;
   goal?: Goal | null;
+  recurring_bill?: RecurringBill | null;
 }
 
 export interface RecurringBill {
