@@ -6,8 +6,6 @@ import {
   Loader2,
   Trash2,
   Layers,
-  Target,
-  Repeat,
   ChevronRight,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
