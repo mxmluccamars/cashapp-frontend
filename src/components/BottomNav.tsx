@@ -65,7 +65,7 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
       style={{
         backgroundColor: currentTheme.bgCard,
         borderTopColor: currentTheme.secondary,
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
+        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))', 
       }}
       className={`fixed bottom-0 left-0 right-0 h-20 border-t px-2 z-50 transition-all duration-500 ease-in-out ${
         isVisible
