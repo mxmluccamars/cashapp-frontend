@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+html,
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  padding-top: env(safe-area-inset-top);
+}
+
 :root {
   --f1-bg-dark: #080d1a;
   --f1-bg-card: #0f172a;

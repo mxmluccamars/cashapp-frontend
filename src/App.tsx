@@ -16,6 +16,17 @@ import { PitStopPage } from './pages/PitStopPage';
 
 export default function App() {
   const { currentTheme } = useTheme();
+
+  useEffect(() => {
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', currentTheme.bgDark);
+    }
+    document.documentElement.style.backgroundColor = currentTheme.bgDark;
+    document.body.style.backgroundColor = currentTheme.bgDark;
+  }, [currentTheme.bgDark]);
+
+  
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [previousTab, setPreviousTab] = useState<TabType>('home');
   const [isSubScreenOpen, setIsSubScreenOpen] = useState(false);
