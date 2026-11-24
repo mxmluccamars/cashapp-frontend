@@ -4,7 +4,7 @@ import {
   SlidersHorizontal,
   X,
   Loader2,
-  MapPin,
+  // MapPin,
   Target,
   Repeat,
 } from 'lucide-react';
@@ -159,12 +159,12 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
         if (filterCategoryId && tx.category_id !== filterCategoryId) return false;
         if (filterPaymentId && tx.payment_method_id !== filterPaymentId) return false;
         if (filterContextId && tx.context_id !== filterContextId) return false;
-        if (filterLocationId && tx.location_id !== filterLocationId) return false;
+        // if (filterLocationId && tx.location_id !== filterLocationId) return false;
 
         if (q) {
           const cat = categoryMap.get(tx.category_id);
           const ctx = tx.context_id ? contextMap.get(tx.context_id) : null;
-          const loc = tx.location_id ? locationMap.get(tx.location_id) : null;
+          // const loc = tx.location_id ? locationMap.get(tx.location_id) : null;
           const pm = tx.payment_method_id
             ? paymentMap.get(tx.payment_method_id)
             : null;
@@ -175,8 +175,8 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
               tx.notes || '',
               cat?.name || '',
               ctx?.name || '',
-              loc?.name || '',
-              loc?.city || '',
+              // loc?.name || '',
+              // loc?.city || '',
               pm?.name || '',
             ].join(' ')
           );
@@ -584,9 +584,9 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                   const ctx = tx.context_id
                     ? contextMap.get(tx.context_id)
                     : null;
-                  const loc = tx.location_id
-                    ? locationMap.get(tx.location_id)
-                    : null;
+                  // const loc = tx.location_id
+                  //   ? locationMap.get(tx.location_id)
+                  //   : null;
 
                   const catColor = cat?.color || '#10B981';
                   const isIncome = tx.type === 'INCOME';
@@ -655,12 +655,12 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                                 #{ctx.name}
                               </span>
                             )}
-                            {loc && (
+                            {/* {loc && (
                               <span className="inline-flex items-center gap-0.5">
                                 <MapPin size={10} />
                                 {loc.name}
                               </span>
-                            )}
+                            )} */}
                           </div>
                         </div>
                       </div>
