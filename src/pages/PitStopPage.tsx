@@ -22,8 +22,6 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
   const {
     categories,
     paymentMethods,
-    contexts,
-    locations,
     isLoadingCatalogs,
     ensureCatalogsLoaded,
     addTransaction,
@@ -40,7 +38,6 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
   const [isInstallmentFocused, setIsInstallmentFocused] = useState<boolean>(false);
 
   const [contextId, setContextId] = useState('');
-  const [locationId, setLocationId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,7 +142,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
         category_id: categoryId,
         payment_method_id: paymentMethodId,
         context_id: type === 'EXPENSE' && contextId ? contextId : null,
-        location_id: type === 'EXPENSE' && locationId ? locationId : null,
+        // location_id: type === 'EXPENSE' && locationId ? locationId : null,
         installments: showInstallments ? installments : 1,
       });
       onClose();
@@ -377,7 +374,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
                 </div>
               )}
 
-              {/* 7. Contexto e Local com Barra de Pesquisa */}
+              {/* 7. Contexto e Local com Barra de Pesquisa
               <div className="grid grid-cols-2 gap-3">
                 <SearchableSelect
                   label="Contexto"
@@ -398,7 +395,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
                   value={locationId}
                   onChange={setLocationId}
                 />
-              </div>
+              </div> */}
             </>
           )}
 

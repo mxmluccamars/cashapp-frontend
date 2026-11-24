@@ -49,7 +49,7 @@ export interface TransactionCreate {
   category_id: string;
   payment_method_id?: string | null;
   context_id?: string | null;
-  location_id?: string | null;
+  // location_id?: string | null;
   goal_id?: string | null;
   installments?: number;
   recurring_bill_id?: string | null;
