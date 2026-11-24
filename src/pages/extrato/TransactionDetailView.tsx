@@ -37,7 +37,7 @@ export function TransactionDetailView({
     categories,
     paymentMethods,
     contexts,
-    locations,
+    // locations,
     goals,
     recurringBills,
     editTransaction,
@@ -57,7 +57,7 @@ export function TransactionDetailView({
     transaction.payment_method_id || ''
   );
   const [contextId, setContextId] = useState(transaction.context_id || '');
-  const [locationId, setLocationId] = useState(transaction.location_id || '');
+  // const [locationId, setLocationId] = useState(transaction.location_id || '');
   const [notes, setNotes] = useState(transaction.notes || '');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -118,7 +118,7 @@ export function TransactionDetailView({
         category_id: categoryId,
         payment_method_id: paymentMethodId || null,
         context_id: contextId || null,
-        location_id: locationId || null,
+        // location_id: locationId || null,
         notes: notes.trim() || null,
       });
       onBack();
@@ -152,7 +152,7 @@ const handleDuplicateToday = async () => {
         category_id: categoryId,
         payment_method_id: paymentMethodId || null,
         context_id: contextId || null,
-        location_id: locationId || null,
+        // location_id: locationId || null,
         notes: notes.trim() || null,
         installments: 1,
       });
@@ -484,7 +484,7 @@ const handleDuplicateToday = async () => {
             </select>
           </div>
 
-          <div
+          {/* <div
             style={{ backgroundColor: currentTheme.bgCard }}
             className="p-3.5 rounded-xl"
           >
@@ -511,7 +511,7 @@ const handleDuplicateToday = async () => {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
         </div>
 
         {/* Observações */}

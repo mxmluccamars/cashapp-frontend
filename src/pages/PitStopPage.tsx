@@ -37,7 +37,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
   const [installmentsInput, setInstallmentsInput] = useState<string>('1');
   const [isInstallmentFocused, setIsInstallmentFocused] = useState<boolean>(false);
 
-  const [contextId, setContextId] = useState('');
+  const [contextId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
