@@ -8,9 +8,16 @@ import {
   Loader2,
   Trash2,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { useData } from '../../context/DataContext';
+import { getAppLocale } from '../../i18n';
 import { DynamicIcon } from '../../components/DynamicIcon';
+import {
+  formatCurrency,
+  formatMonthYear,
+  getLocalDateISO,
+} from '../../utils/format';
 
 interface InstallmentGroupViewProps {
   groupId: string;
@@ -20,25 +27,6 @@ interface InstallmentGroupViewProps {
   onDeletedAll: () => void;
 }
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-const getTodayLocalISO = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
-const formatMonthYear = (isoDate: string) => {
-  const [y, m, d] = isoDate.split('-').map(Number);
-  return new Intl.DateTimeFormat('pt-BR', {
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(y, m - 1, d));
-};
-
 export function InstallmentGroupView({
   groupId,
   currentTxId,
@@ -47,22 +35,28 @@ export function InstallmentGroupView({
   onDeletedAll,
 }: InstallmentGroupViewProps) {
   const { currentTheme } = useTheme();
-  const { transactions, categories, paymentMethods, removeTransaction } = useData();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
+  const { transactions, categories, paymentMethods, removeTransaction } =
+    useData();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const todayISO = getTodayLocalISO();
+  const todayISO = getLocalDateISO(0);
 
-  // Busca todas as parcelas do mesmo grupo e ordena da 1ª até a última
   const groupItems = useMemo(() => {
     return transactions
       .filter((tx) => tx.installment_group_id === groupId)
       .sort((a, b) => {
-        const diff = (a.installment_current || 0) - (b.installment_current || 0);
+        const diff =
+          (a.installment_current || 0) - (b.installment_current || 0);
         return diff !== 0 ? diff : a.date.localeCompare(b.date);
       });
   }, [transactions, groupId]);
 
-  const refTx = groupItems.find((t) => t.id === currentTxId) || groupItems[0];
+  const refTx = groupItems.find((item) => item.id === currentTxId) || groupItems[0];
   const category = refTx
     ? categories.find((c) => c.id === refTx.category_id)
     : null;
@@ -94,36 +88,38 @@ export function InstallmentGroupView({
 
   const handleDeleteAll = async () => {
     if (groupItems.length === 0) return;
-    const confirmed = window.confirm(
-      `Excluir TODAS as ${groupItems.length} parcelas de "${refTx?.description}" (${formatBRL(totalAmount)})? Esta ação não pode ser desfeita.`
-    );
-    if (!confirmed) return;
 
     setIsDeletingAll(true);
+    setError(null);
     try {
       for (const item of groupItems) {
         await removeTransaction(item.id);
       }
       onDeletedAll();
     } catch (err: any) {
-      alert(err.message || 'Erro ao excluir parcelas.');
+      setError(err.message || t('extrato.installments.deleteAllError'));
+      setConfirmDeleteAll(false);
     } finally {
       setIsDeletingAll(false);
     }
   };
 
   return (
-    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
+    <div
+      style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+      className="p-5 max-w-md mx-auto flex flex-col gap-5"
+    >
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
+          aria-label={t('common.back')}
           style={{
             backgroundColor: currentTheme.bgCard,
             color: currentTheme.primaryText,
           }}
-          className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
+          className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform shrink-0"
         >
           <ArrowLeft size={20} />
         </button>
@@ -132,42 +128,48 @@ export function InstallmentGroupView({
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest block"
           >
-            Detalhes das Parcelas
+            {t('extrato.installments.subtitle')}
           </span>
           <h2
             style={{ color: currentTheme.primaryText }}
             className="text-lg font-black uppercase truncate"
           >
-            {refTx?.description || 'Compra Parcelada'}
+            {refTx?.description || t('extrato.installments.defaultTitle')}
           </h2>
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500 text-red-200 text-xs font-bold">
+          {error}
+        </div>
+      )}
 
       {/* Card Resumo do Parcelamento */}
       <div
         style={{ backgroundColor: currentTheme.bgCard }}
         className="p-5 rounded-3xl flex flex-col gap-4"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div
               style={{ backgroundColor: `${catColor}25`, color: catColor }}
               className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
             >
               <DynamicIcon name={category?.icon} size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <span
                 style={{ color: currentTheme.secondaryText }}
                 className="text-[10px] font-bold uppercase tracking-widest block"
               >
-                Valor Total ({totalCount}x)
+                {t('extrato.installments.totalValue', { count: totalCount })}
               </span>
               <span
                 style={{ color: currentTheme.primaryText }}
-                className="text-2xl font-black block"
+                className="text-2xl font-black block truncate"
               >
-                {formatBRL(totalAmount)}
+                {formatCurrency(totalAmount, locale)}
               </span>
             </div>
           </div>
@@ -178,7 +180,7 @@ export function InstallmentGroupView({
                 backgroundColor: currentTheme.bgDark,
                 color: currentTheme.secondaryText,
               }}
-              className="px-2.5 py-1 rounded-xl text-[10px] font-bold"
+              className="px-2.5 py-1 rounded-xl text-[10px] font-bold shrink-0"
             >
               {paymentMethod.name}
             </span>
@@ -189,7 +191,10 @@ export function InstallmentGroupView({
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-[11px] font-bold">
             <span style={{ color: currentTheme.secondaryText }}>
-              {paidCount} de {totalCount} parcelas até hoje
+              {t('extrato.installments.paidProgress', {
+                paid: paidCount,
+                total: totalCount,
+              })}
             </span>
             <span style={{ color: currentTheme.primary }}>{progressPct}%</span>
           </div>
@@ -211,10 +216,10 @@ export function InstallmentGroupView({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block"
             >
-              Até hoje
+              {t('extrato.installments.paidToDate')}
             </span>
             <span className="text-sm font-black text-emerald-400">
-              {formatBRL(paidAmount)}
+              {formatCurrency(paidAmount, locale)}
             </span>
           </div>
           <div className="text-right">
@@ -222,13 +227,13 @@ export function InstallmentGroupView({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block"
             >
-              A vencer
+              {t('extrato.installments.upcoming')}
             </span>
             <span
               style={{ color: currentTheme.primaryText }}
               className="text-sm font-black"
             >
-              {formatBRL(remainingAmount)}
+              {formatCurrency(remainingAmount, locale)}
             </span>
           </div>
         </div>
@@ -240,7 +245,7 @@ export function InstallmentGroupView({
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase tracking-widest px-1"
         >
-          Cronograma ({totalCount} parcelas)
+          {t('extrato.installments.scheduleTitle', { count: totalCount })}
         </span>
 
         <div
@@ -250,7 +255,7 @@ export function InstallmentGroupView({
           {groupItems.map((item) => {
             const isCurrent = item.id === currentTxId;
             const isDue = item.date <= todayISO;
-            const dateBr = item.date.split('-').reverse().join('/');
+            const formattedDate = item.date.split('-').reverse().join('/');
 
             return (
               <button
@@ -281,9 +286,12 @@ export function InstallmentGroupView({
                     <div className="flex items-center gap-1.5">
                       <span
                         style={{ color: currentTheme.primaryText }}
-                        className="text-sm font-bold capitalize"
+                        className="text-sm font-bold"
                       >
-                        Parcela {item.installment_current}/{item.installment_total}
+                        {t('extrato.installments.itemLabel', {
+                          current: item.installment_current,
+                          total: item.installment_total,
+                        })}
                       </span>
                       {isCurrent && (
                         <span
@@ -293,7 +301,7 @@ export function InstallmentGroupView({
                           }}
                           className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md"
                         >
-                          Atual
+                          {t('extrato.installments.currentBadge')}
                         </span>
                       )}
                     </div>
@@ -304,7 +312,7 @@ export function InstallmentGroupView({
                     >
                       <Calendar size={10} />
                       <span>
-                        {formatMonthYear(item.date)} • {dateBr}
+                        {formatMonthYear(item.date, locale)} • {formattedDate}
                       </span>
                     </div>
                   </div>
@@ -315,7 +323,7 @@ export function InstallmentGroupView({
                     style={{ color: currentTheme.primaryText }}
                     className="text-sm font-black"
                   >
-                    {formatBRL(Number(item.amount))}
+                    {formatCurrency(Number(item.amount), locale)}
                   </span>
                   <ChevronRight
                     size={16}
@@ -328,21 +336,60 @@ export function InstallmentGroupView({
         </div>
       </div>
 
-      {/* Excluir todas as parcelas */}
-      {groupItems.length > 1 && (
+      {/* Excluir todas as parcelas (com confirmação inline) */}
+      {groupItems.length > 1 && !confirmDeleteAll && (
         <button
           type="button"
-          onClick={handleDeleteAll}
+          onClick={() => setConfirmDeleteAll(true)}
           disabled={isDeletingAll}
-          className="py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
+          className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
         >
-          {isDeletingAll ? (
-            <Loader2 className="animate-spin" size={16} />
-          ) : (
-            <Trash2 size={16} />
-          )}
-          Excluir todas as {groupItems.length} parcelas
+          <Trash2 size={16} />
+          {t('extrato.installments.deleteAllBtn', { count: groupItems.length })}
         </button>
+      )}
+
+      {groupItems.length > 1 && confirmDeleteAll && (
+        <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 flex flex-col gap-3">
+          <div className="text-center">
+            <p className="text-xs font-black uppercase text-red-300">
+              {t('extrato.installments.deleteAllConfirmTitle')}
+            </p>
+            <p className="text-xs text-red-200/80 mt-0.5">
+              {t('extrato.installments.deleteAllConfirmMessage', {
+                count: groupItems.length,
+                description: refTx?.description || '',
+                total: formatCurrency(totalAmount, locale),
+              })}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteAll(false)}
+              disabled={isDeletingAll}
+              style={{
+                backgroundColor: currentTheme.bgCard,
+                color: currentTheme.primaryText,
+              }}
+              className="py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll}
+              className="py-2.5 rounded-xl text-xs font-black uppercase bg-red-500 text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isDeletingAll ? (
+                <Loader2 className="animate-spin" size={14} />
+              ) : (
+                t('common.confirm')
+              )}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

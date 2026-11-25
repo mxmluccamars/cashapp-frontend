@@ -8,6 +8,7 @@ import {
   CreditCard,
   SlidersHorizontal,
   Lock,
+  RefreshCw,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -27,6 +28,8 @@ type GarageSection =
   | 'contexts'
   | 'payments';
 
+
+
 interface GaragePageProps {
   onSubScreenChange?: (isOpen: boolean) => void;
 }
@@ -40,6 +43,14 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
     onSubScreenChange?.(section !== 'menu');
     return () => onSubScreenChange?.(false);
   }, [section, onSubScreenChange]);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncData = () => {
+    setIsSyncing(true);
+    // Na próxima etapa ligaremos direto ao syncAll() do DataContext sem recarregar a página
+    window.location.reload();
+  };
 
   const currentLangCode = i18n.language?.slice(0, 2) || 'pt';
   const currentLangObj =
@@ -269,12 +280,52 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase tracking-widest px-1 block mb-2"
         >
-          {t('garage.securitySection')}
+          {t('garage.dataSecuritySection')}
         </span>
         <div
           style={{ backgroundColor: currentTheme.bgCard }}
-          className="rounded-2xl overflow-hidden"
+          className="rounded-2xl overflow-hidden divide-y divide-white/5"
         >
+          {/* Botão Sincronizar Dados */}
+          <button
+            type="button"
+            onClick={handleSyncData}
+            disabled={isSyncing}
+            className="w-full p-4 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div
+                style={{
+                  backgroundColor: `${currentTheme.primary}20`,
+                  color: currentTheme.primary,
+                }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              >
+                <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} />
+              </div>
+              <div className="text-left min-w-0">
+                <span
+                  style={{ color: currentTheme.primaryText }}
+                  className="text-sm font-bold block truncate"
+                >
+                  {isSyncing ? t('garage.syncing') : t('garage.syncData')}
+                </span>
+                <span
+                  style={{ color: currentTheme.secondaryText }}
+                  className="text-[11px] font-medium block truncate"
+                >
+                  {t('garage.syncDataSubtitle')}
+                </span>
+              </div>
+            </div>
+            <ChevronRight
+              size={18}
+              style={{ color: currentTheme.secondaryText }}
+              className="shrink-0"
+            />
+          </button>
+
+          {/* Botão Trancar App */}
           <button
             type="button"
             onClick={handleLockApp}

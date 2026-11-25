@@ -39,12 +39,13 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
   const locale = getAppLocale(i18n.language);
 
   const {
-    categories,
-    paymentMethods,
-    isLoadingCatalogs,
-    ensureCatalogsLoaded,
-    addTransaction,
-  } = useData();
+  categories,
+  paymentMethods,
+  contexts,
+  isLoadingCatalogs,
+  ensureCatalogsLoaded,
+  addTransaction,
+} = useData();
 
   const todayISO = getLocalDateISO(0);
   const yesterdayISO = getLocalDateISO(-1);
@@ -54,6 +55,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => getLocalDateISO(0));
   const [categoryId, setCategoryId] = useState('');
+  const [contextId, setContextId] = useState('');
   const [paymentMethodId, setPaymentMethodId] = useState('');
 
   const [installmentsInput, setInstallmentsInput] = useState<string>('1');
@@ -145,7 +147,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
         type,
         category_id: categoryId,
         payment_method_id: paymentMethodId,
-        context_id: null,
+        context_id: type === 'EXPENSE' && contextId ? contextId : null,
         installments: showInstallments ? installments : 1,
       });
       onClose();
@@ -333,7 +335,21 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
             required
           />
 
-          {/* 6. Forma de Pagamento / Recebimento */}
+          {/* 6. Contexto (opcional, apenas para Despesa) */}
+          {type === 'EXPENSE' && contexts.length > 0 && (
+            <SearchableSelect
+              label={t('pitstop.context')}
+              placeholder={t('pitstop.contextPlaceholder')}
+              options={contexts.map((ctx) => ({
+                id: ctx.id,
+                name: `#${ctx.name}`,
+              }))}
+              value={contextId}
+              onChange={setContextId}
+            />
+          )}
+
+          {/* 7. Forma de Pagamento / Recebimento */}
           <div>
             <label
               style={{ color: currentTheme.secondaryText }}
@@ -383,7 +399,9 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
             </div>
           </div>
 
-          {/* 7. Número de Parcelas (apenas para Despesa em método parcelável) */}
+
+
+          {/* 8. Número de Parcelas (apenas para Despesa em método parcelável) */}
           {showInstallments && (
             <div
               style={{
@@ -411,6 +429,7 @@ export function PitStopPage({ onClose }: PitStopPageProps) {
               />
             </div>
           )}
+
 
           {/* Botão de Confirmação (colado no fluxo, sem buraco vazio nem corte no iOS) */}
           <div className="mt-auto pt-3 w-full">

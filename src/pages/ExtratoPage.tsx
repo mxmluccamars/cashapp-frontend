@@ -4,15 +4,22 @@ import {
   SlidersHorizontal,
   X,
   Loader2,
-  // MapPin,
   Target,
   Repeat,
+  Check,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { useData } from '../context/DataContext';
+import { getAppLocale } from '../i18n';
 import { DynamicIcon } from '../components/DynamicIcon';
 import { MonthSelector } from '../components/home/MonthSelector';
 import { TransactionDetailView } from './extrato/TransactionDetailView';
+import {
+  formatCurrency,
+  formatDayHeading,
+  normalizeIconName,
+} from '../utils/format';
 import type { Transaction } from '../types/finance';
 
 interface ExtratoPageProps {
@@ -24,39 +31,19 @@ type QuickFilter = 'ALL' | 'EXPENSE' | 'INCOME' | 'INSTALLMENT';
 const normalize = (str: string) =>
   str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-const getLocalISO = (offsetDays = 0) => {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-const formatDayHeading = (isoDate: string, includeYear: boolean) => {
-  if (isoDate === getLocalISO(0)) return 'Hoje';
-  if (isoDate === getLocalISO(-1)) return 'Ontem';
-
-  const [y, m, d] = isoDate.split('-').map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    ...(includeYear ? { year: 'numeric' } : {}),
-  }).format(dateObj);
-};
+const toggleId = (list: string[], id: string) =>
+  list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 
 export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const {
     transactions,
     categories,
     paymentMethods,
     contexts,
-    locations,
     isLoadingTransactions,
     ensureHomeLoaded,
   } = useData();
@@ -64,19 +51,17 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
   const now = new Date();
   const [periodMode, setPeriodMode] = useState<'month' | 'all'>('month');
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth()); // 0 a 11
+  const [month, setMonth] = useState(now.getMonth());
 
   const [search, setSearch] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('ALL');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filtros avançados (Os 3 eixos + Pagamento)
-  const [filterCategoryId, setFilterCategoryId] = useState('');
-  const [filterPaymentId, setFilterPaymentId] = useState('');
-  const [filterContextId, setFilterContextId] = useState('');
-  const [filterLocationId, setFilterLocationId] = useState('');
+  // Filtros avançados com multi-seleção
+  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>([]);
+  const [filterPaymentIds, setFilterPaymentIds] = useState<string[]>([]);
+  const [filterContextIds, setFilterContextIds] = useState<string[]>([]);
 
-  // Transação selecionada para detalhe/edição
   const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,7 +73,6 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
     return () => onSubScreenChange?.(false);
   }, [selectedTxId, onSubScreenChange]);
 
-  // Mapas de acesso rápido O(1)
   const categoryMap = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories]
@@ -100,10 +84,6 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
   const contextMap = useMemo(
     () => new Map(contexts.map((ctx) => [ctx.id, ctx])),
     [contexts]
-  );
-  const locationMap = useMemo(
-    () => new Map(locations.map((loc) => [loc.id, loc])),
-    [locations]
   );
 
   const handlePrevMonth = () => {
@@ -124,21 +104,15 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
     }
   };
 
-  const activeAdvancedCount = [
-    filterCategoryId,
-    filterPaymentId,
-    filterContextId,
-    filterLocationId,
-  ].filter(Boolean).length;
+  const activeAdvancedCount =
+    filterCategoryIds.length + filterPaymentIds.length + filterContextIds.length;
 
   const clearAdvancedFilters = () => {
-    setFilterCategoryId('');
-    setFilterPaymentId('');
-    setFilterContextId('');
-    setFilterLocationId('');
+    setFilterCategoryIds([]);
+    setFilterPaymentIds([]);
+    setFilterContextIds([]);
   };
 
-  // Filtragem completa
   const filteredTransactions = useMemo(() => {
     const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     const q = normalize(search.trim());
@@ -156,15 +130,29 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
           return false;
         }
 
-        if (filterCategoryId && tx.category_id !== filterCategoryId) return false;
-        if (filterPaymentId && tx.payment_method_id !== filterPaymentId) return false;
-        if (filterContextId && tx.context_id !== filterContextId) return false;
-        // if (filterLocationId && tx.location_id !== filterLocationId) return false;
+        if (
+          filterCategoryIds.length > 0 &&
+          !filterCategoryIds.includes(tx.category_id)
+        ) {
+          return false;
+        }
+        if (
+          filterPaymentIds.length > 0 &&
+          (!tx.payment_method_id ||
+            !filterPaymentIds.includes(tx.payment_method_id))
+        ) {
+          return false;
+        }
+        if (
+          filterContextIds.length > 0 &&
+          (!tx.context_id || !filterContextIds.includes(tx.context_id))
+        ) {
+          return false;
+        }
 
         if (q) {
           const cat = categoryMap.get(tx.category_id);
           const ctx = tx.context_id ? contextMap.get(tx.context_id) : null;
-          // const loc = tx.location_id ? locationMap.get(tx.location_id) : null;
           const pm = tx.payment_method_id
             ? paymentMap.get(tx.payment_method_id)
             : null;
@@ -175,8 +163,6 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
               tx.notes || '',
               cat?.name || '',
               ctx?.name || '',
-              // loc?.name || '',
-              // loc?.city || '',
               pm?.name || '',
             ].join(' ')
           );
@@ -192,18 +178,15 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
     year,
     month,
     quickFilter,
-    filterCategoryId,
-    filterPaymentId,
-    filterContextId,
-    filterLocationId,
+    filterCategoryIds,
+    filterPaymentIds,
+    filterContextIds,
     search,
     categoryMap,
     contextMap,
-    locationMap,
     paymentMap,
   ]);
 
-  // Placar Dinâmico do recorte atual
   const summary = useMemo(() => {
     return filteredTransactions.reduce(
       (acc, tx) => {
@@ -216,10 +199,12 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
     );
   }, [filteredTransactions]);
 
-  // Agrupamento por dia (Timeline)
   const groupedByDay = useMemo(() => {
     const groups: { date: string; items: Transaction[]; dayNet: number }[] = [];
-    const map = new Map<string, { date: string; items: Transaction[]; dayNet: number }>();
+    const map = new Map<
+      string,
+      { date: string; items: Transaction[]; dayNet: number }
+    >();
 
     filteredTransactions.forEach((tx) => {
       let group = map.get(tx.date);
@@ -236,9 +221,8 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
     return groups;
   }, [filteredTransactions]);
 
-  // Sub-tela de Detalhe / Edição
   const selectedTx = selectedTxId
-    ? transactions.find((t) => t.id === selectedTxId) || null
+    ? transactions.find((item) => item.id === selectedTxId) || null
     : null;
 
   if (selectedTx) {
@@ -261,13 +245,13 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest block"
           >
-            Histórico / Voltas
+            {t('extrato.subtitle')}
           </span>
           <h1
             style={{ color: currentTheme.primaryText }}
             className="text-xl font-black uppercase"
           >
-            Extrato
+            {t('extrato.title')}
           </h1>
         </div>
 
@@ -288,7 +272,7 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
             }}
             className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase cursor-pointer transition-colors"
           >
-            Mês
+            {t('extrato.periodMonth')}
           </button>
           <button
             type="button"
@@ -303,12 +287,12 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
             }}
             className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase cursor-pointer transition-colors"
           >
-            Tudo
+            {t('extrato.periodAll')}
           </button>
         </div>
       </div>
 
-      {/* Seletor de Mês (quando no modo Mês) */}
+      {/* Seletor de Mês */}
       {periodMode === 'month' && (
         <MonthSelector
           year={year}
@@ -324,12 +308,16 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
           style={{ backgroundColor: currentTheme.bgCard }}
           className="flex-1 px-3.5 py-2.5 rounded-xl flex items-center gap-2.5"
         >
-          <Search size={16} style={{ color: currentTheme.secondaryText }} />
+          <Search
+            size={16}
+            style={{ color: currentTheme.secondaryText }}
+            className="shrink-0"
+          />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar descrição, local, contexto..."
+            placeholder={t('extrato.searchPlaceholder')}
             style={{ color: currentTheme.primaryText }}
             className="w-full text-xs font-semibold bg-transparent focus:outline-none"
           />
@@ -337,8 +325,9 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
             <button
               type="button"
               onClick={() => setSearch('')}
+              aria-label={t('common.clearSearch')}
               style={{ color: currentTheme.secondaryText }}
-              className="cursor-pointer"
+              className="cursor-pointer shrink-0"
             >
               <X size={14} />
             </button>
@@ -355,8 +344,9 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                 : currentTheme.bgCard,
             color: currentTheme.primaryText,
           }}
-          className="p-2.5 rounded-xl relative cursor-pointer active:scale-95 transition-transform"
-          title="Filtros avançados"
+          className="p-2.5 rounded-xl relative cursor-pointer active:scale-95 transition-transform shrink-0"
+          title={t('extrato.advancedFilters')}
+          aria-label={t('extrato.advancedFilters')}
         >
           <SlidersHorizontal size={18} />
           {activeAdvancedCount > 0 && (
@@ -371,10 +361,10 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
       <div className="flex gap-2 overflow-x-auto pb-0.5">
         {(
           [
-            { id: 'ALL', label: 'Todos' },
-            { id: 'EXPENSE', label: 'Saídas' },
-            { id: 'INCOME', label: 'Entradas' },
-            { id: 'INSTALLMENT', label: 'Parcelados' },
+            { id: 'ALL', label: t('extrato.quickAll') },
+            { id: 'EXPENSE', label: t('extrato.quickExpense') },
+            { id: 'INCOME', label: t('extrato.quickIncome') },
+            { id: 'INSTALLMENT', label: t('extrato.quickInstallment') },
           ] as { id: QuickFilter; label: string }[]
         ).map((pill) => {
           const isActive = quickFilter === pill.id;
@@ -399,21 +389,100 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
         })}
       </div>
 
-      {/* Gaveta de Filtros Avançados (3 Eixos + Pagamento) */}
+      {/* Chips dos filtros ativos quando a gaveta está fechada */}
+      {!showFilters && activeAdvancedCount > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {filterCategoryIds.map((id) => {
+            const cat = categoryMap.get(id);
+            if (!cat) return null;
+            const c = cat.color || currentTheme.primary;
+            return (
+              <button
+                key={`cat-${id}`}
+                type="button"
+                onClick={() =>
+                  setFilterCategoryIds((prev) => prev.filter((x) => x !== id))
+                }
+                style={{ backgroundColor: `${c}22`, color: c, borderColor: `${c}55` }}
+                className="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <DynamicIcon name={cat.icon} size={12} />
+                <span>{cat.name}</span>
+                <X size={11} />
+              </button>
+            );
+          })}
+
+          {filterPaymentIds.map((id) => {
+            const pm = paymentMap.get(id);
+            if (!pm) return null;
+            const c = pm.color || currentTheme.primary;
+            return (
+              <button
+                key={`pm-${id}`}
+                type="button"
+                onClick={() =>
+                  setFilterPaymentIds((prev) => prev.filter((x) => x !== id))
+                }
+                style={{ backgroundColor: `${c}22`, color: c, borderColor: `${c}55` }}
+                className="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <DynamicIcon name={normalizeIconName(pm.icon)} size={12} />
+                <span>{pm.name}</span>
+                <X size={11} />
+              </button>
+            );
+          })}
+
+          {filterContextIds.map((id) => {
+            const ctx = contextMap.get(id);
+            if (!ctx) return null;
+            return (
+              <button
+                key={`ctx-${id}`}
+                type="button"
+                onClick={() =>
+                  setFilterContextIds((prev) => prev.filter((x) => x !== id))
+                }
+                style={{
+                  backgroundColor: `${currentTheme.primary}22`,
+                  color: currentTheme.primary,
+                  borderColor: `${currentTheme.primary}55`,
+                }}
+                className="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <span>#{ctx.name}</span>
+                <X size={11} />
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={clearAdvancedFilters}
+            style={{ color: currentTheme.secondaryText }}
+            className="px-2 py-1 text-[10px] font-black uppercase cursor-pointer"
+          >
+            {t('common.clear')}
+          </button>
+        </div>
+      )}
+
+      {/* Gaveta de Filtros Avançados Empilhados (Multi-seleção) */}
       {showFilters && (
         <div
           style={{
             backgroundColor: currentTheme.bgCard,
             borderColor: currentTheme.secondary,
           }}
-          className="p-4 rounded-2xl border flex flex-col gap-3"
+          className="p-4 rounded-2xl border flex flex-col gap-4"
         >
           <div className="flex items-center justify-between">
             <span
               style={{ color: currentTheme.primaryText }}
               className="text-xs font-black uppercase"
             >
-              Filtros Cruzados
+              {t('extrato.filtersTitle')}
             </span>
             {activeAdvancedCount > 0 && (
               <button
@@ -422,80 +491,160 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                 style={{ color: currentTheme.primary }}
                 className="text-[11px] font-black uppercase cursor-pointer"
               >
-                Limpar ({activeAdvancedCount})
+                {t('extrato.clearFilters', { count: activeAdvancedCount })}
               </button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <select
-              value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value)}
-              style={{
-                backgroundColor: currentTheme.bgDark,
-                color: currentTheme.primaryText,
-              }}
-              className="p-2.5 rounded-xl text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Categoria: Todas</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterPaymentId}
-              onChange={(e) => setFilterPaymentId(e.target.value)}
-              style={{
-                backgroundColor: currentTheme.bgDark,
-                color: currentTheme.primaryText,
-              }}
-              className="p-2.5 rounded-xl text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Pagamento: Todos</option>
-              {paymentMethods.map((pm) => (
-                <option key={pm.id} value={pm.id}>
-                  {pm.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterContextId}
-              onChange={(e) => setFilterContextId(e.target.value)}
-              style={{
-                backgroundColor: currentTheme.bgDark,
-                color: currentTheme.primaryText,
-              }}
-              className="p-2.5 rounded-xl text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Contexto: Todos</option>
-              {contexts.map((ctx) => (
-                <option key={ctx.id} value={ctx.id}>
-                  #{ctx.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterLocationId}
-              onChange={(e) => setFilterLocationId(e.target.value)}
-              style={{
-                backgroundColor: currentTheme.bgDark,
-                color: currentTheme.primaryText,
-              }}
-              className="p-2.5 rounded-xl text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Local: Todos</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
+          {/* 1. Categorias (multi-seleção) */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span
+                style={{ color: currentTheme.secondaryText }}
+                className="text-[10px] font-bold uppercase tracking-wider"
+              >
+                {t('extrato.categoriesFilter')}
+                {filterCategoryIds.length > 0 && ` (${filterCategoryIds.length})`}
+              </span>
+              {filterCategoryIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilterCategoryIds([])}
+                  style={{ color: currentTheme.primary }}
+                  className="text-[10px] font-bold uppercase cursor-pointer"
+                >
+                  {t('common.clear')}
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-0.5">
+              {categories.map((cat) => {
+                const isSelected = filterCategoryIds.includes(cat.id);
+                const c = cat.color || currentTheme.primary;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() =>
+                      setFilterCategoryIds((prev) => toggleId(prev, cat.id))
+                    }
+                    style={{
+                      backgroundColor: isSelected ? `${c}28` : currentTheme.bgDark,
+                      borderColor: isSelected ? c : 'transparent',
+                      color: isSelected ? c : currentTheme.secondaryText,
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <DynamicIcon name={cat.icon} size={13} />
+                    <span>{cat.name}</span>
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* 2. Formas de Pagamento (multi-seleção) */}
+          <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <span
+                style={{ color: currentTheme.secondaryText }}
+                className="text-[10px] font-bold uppercase tracking-wider"
+              >
+                {t('extrato.paymentsFilter')}
+                {filterPaymentIds.length > 0 && ` (${filterPaymentIds.length})`}
+              </span>
+              {filterPaymentIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilterPaymentIds([])}
+                  style={{ color: currentTheme.primary }}
+                  className="text-[10px] font-bold uppercase cursor-pointer"
+                >
+                  {t('common.clear')}
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {paymentMethods.map((pm) => {
+                const isSelected = filterPaymentIds.includes(pm.id);
+                const c = pm.color || currentTheme.primary;
+                return (
+                  <button
+                    key={pm.id}
+                    type="button"
+                    onClick={() =>
+                      setFilterPaymentIds((prev) => toggleId(prev, pm.id))
+                    }
+                    style={{
+                      backgroundColor: isSelected ? `${c}28` : currentTheme.bgDark,
+                      borderColor: isSelected ? c : 'transparent',
+                      color: isSelected ? c : currentTheme.secondaryText,
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <DynamicIcon name={normalizeIconName(pm.icon)} size={13} />
+                    <span>{pm.name}</span>
+                    {isSelected && <Check size={12} strokeWidth={3} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Contextos (multi-seleção) */}
+          {contexts.length > 0 && (
+            <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+              <div className="flex items-center justify-between">
+                <span
+                  style={{ color: currentTheme.secondaryText }}
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                >
+                  {t('extrato.contextsFilter')}
+                  {filterContextIds.length > 0 && ` (${filterContextIds.length})`}
+                </span>
+                {filterContextIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterContextIds([])}
+                    style={{ color: currentTheme.primary }}
+                    className="text-[10px] font-bold uppercase cursor-pointer"
+                  >
+                    {t('common.clear')}
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {contexts.map((ctx) => {
+                  const isSelected = filterContextIds.includes(ctx.id);
+                  return (
+                    <button
+                      key={ctx.id}
+                      type="button"
+                      onClick={() =>
+                        setFilterContextIds((prev) => toggleId(prev, ctx.id))
+                      }
+                      style={{
+                        backgroundColor: isSelected
+                          ? `${currentTheme.primary}28`
+                          : currentTheme.bgDark,
+                        borderColor: isSelected
+                          ? currentTheme.primary
+                          : 'transparent',
+                        color: isSelected
+                          ? currentTheme.primary
+                          : currentTheme.secondaryText,
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <span>#{ctx.name}</span>
+                      {isSelected && <Check size={12} strokeWidth={3} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -506,20 +655,26 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
       >
         <span style={{ color: currentTheme.secondaryText }} className="font-bold">
           {filteredTransactions.length}{' '}
-          {filteredTransactions.length === 1 ? 'volta' : 'voltas'}
+          {filteredTransactions.length === 1
+            ? t('extrato.lapSingular')
+            : t('extrato.lapPlural')}
         </span>
 
         <div className="flex items-center gap-3 font-black">
           {summary.income > 0 && (
-            <span className="text-emerald-400">+{formatBRL(summary.income)}</span>
+            <span className="text-emerald-400">
+              +{formatCurrency(summary.income, locale)}
+            </span>
           )}
           {summary.expense > 0 && (
             <span style={{ color: currentTheme.primaryText }}>
-              -{formatBRL(summary.expense)}
+              -{formatCurrency(summary.expense, locale)}
             </span>
           )}
           {summary.income === 0 && summary.expense === 0 && (
-            <span style={{ color: currentTheme.secondaryText }}>R$ 0,00</span>
+            <span style={{ color: currentTheme.secondaryText }}>
+              {formatCurrency(0, locale)}
+            </span>
           )}
         </div>
       </div>
@@ -542,20 +697,25 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
             style={{ color: currentTheme.secondaryText }}
             className="text-xs font-medium"
           >
-            Nenhum lançamento encontrado para este filtro.
+            {t('extrato.empty')}
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {groupedByDay.map((group) => (
             <div key={group.date} className="flex flex-col gap-2">
-              {/* Cabeçalho do Dia + Subtotal */}
               <div className="flex items-center justify-between px-1">
                 <span
                   style={{ color: currentTheme.secondaryText }}
                   className="text-[11px] font-black uppercase tracking-wider"
                 >
-                  {formatDayHeading(group.date, periodMode === 'all')}
+                  {formatDayHeading(
+                    group.date,
+                    locale,
+                    periodMode === 'all',
+                    t('common.today'),
+                    t('common.yesterday')
+                  )}
                 </span>
                 <span
                   style={{
@@ -567,11 +727,10 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                   className="text-[11px] font-bold"
                 >
                   {group.dayNet > 0 ? '+' : ''}
-                  {formatBRL(group.dayNet)}
+                  {formatCurrency(group.dayNet, locale)}
                 </span>
               </div>
 
-              {/* Card com as transações do dia */}
               <div
                 style={{ backgroundColor: currentTheme.bgCard }}
                 className="rounded-2xl overflow-hidden divide-y divide-white/5"
@@ -584,9 +743,6 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                   const ctx = tx.context_id
                     ? contextMap.get(tx.context_id)
                     : null;
-                  // const loc = tx.location_id
-                  //   ? locationMap.get(tx.location_id)
-                  //   : null;
 
                   const catColor = cat?.color || '#10B981';
                   const isIncome = tx.type === 'INCOME';
@@ -643,24 +799,17 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                             )}
                           </div>
 
-                          {/* Linha de micro-tags (Categoria • Pagamento • #Contexto • Local) */}
                           <div
                             style={{ color: currentTheme.secondaryText }}
                             className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] font-medium mt-0.5"
                           >
-                            <span>{cat?.name || 'Sem categoria'}</span>
+                            <span>{cat?.name || t('extrato.noCategory')}</span>
                             {pm && <span>• {pm.name}</span>}
                             {ctx && (
                               <span style={{ color: currentTheme.primary }}>
                                 #{ctx.name}
                               </span>
                             )}
-                            {/* {loc && (
-                              <span className="inline-flex items-center gap-0.5">
-                                <MapPin size={10} />
-                                {loc.name}
-                              </span>
-                            )} */}
                           </div>
                         </div>
                       </div>
@@ -673,7 +822,8 @@ export function ExtratoPage({ onSubScreenChange }: ExtratoPageProps) {
                         }}
                         className="text-sm font-black shrink-0"
                       >
-                        {isIncome ? '+' : '-'} {formatBRL(Number(tx.amount))}
+                        {isIncome ? '+' : '-'}{' '}
+                        {formatCurrency(Number(tx.amount), locale)}
                       </span>
                     </button>
                   );

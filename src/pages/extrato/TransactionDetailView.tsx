@@ -7,9 +7,19 @@ import {
   Trash2,
   Layers,
   ChevronRight,
+  Target,
+  Repeat,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { useData } from '../../context/DataContext';
+import { getAppLocale } from '../../i18n';
+import { SearchableSelect } from '../../components/SearchableSelect';
+import {
+  formatCurrency,
+  getLocalDateISO,
+  normalizeIconName,
+} from '../../utils/format';
 import type { Transaction } from '../../types/finance';
 import { InstallmentGroupView } from './InstallmentGroupView';
 
@@ -19,25 +29,19 @@ interface TransactionDetailViewProps {
   onSelectTransaction: (txId: string) => void;
 }
 
-const getTodayLocalISO = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-};
-
 export function TransactionDetailView({
   transaction,
   onBack,
   onSelectTransaction,
 }: TransactionDetailViewProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const {
     categories,
     paymentMethods,
     contexts,
-    // locations,
     goals,
     recurringBills,
     editTransaction,
@@ -45,7 +49,6 @@ export function TransactionDetailView({
     addTransaction,
   } = useData();
 
-  // Campos editáveis
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>(transaction.type);
   const [amountCents, setAmountCents] = useState(
     Math.round(Number(transaction.amount) * 100)
@@ -57,13 +60,13 @@ export function TransactionDetailView({
     transaction.payment_method_id || ''
   );
   const [contextId, setContextId] = useState(transaction.context_id || '');
-  // const [locationId, setLocationId] = useState(transaction.location_id || '');
   const [notes, setNotes] = useState(transaction.notes || '');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [confirmRepeat, setConfirmRepeat] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [showInstallments, setShowInstallments] = useState(false);
 
   const filteredCategories = useMemo(
@@ -95,15 +98,15 @@ export function TransactionDetailView({
     const amount = amountCents / 100;
 
     if (amount <= 0) {
-      setError('O valor precisa ser maior que zero.');
+      setError(t('extrato.detail.validationAmount'));
       return;
     }
     if (description.trim().length < 2) {
-      setError('Informe uma descrição válida.');
+      setError(t('extrato.detail.validationDescription'));
       return;
     }
     if (!categoryId) {
-      setError('Selecione uma categoria.');
+      setError(t('extrato.detail.validationCategory'));
       return;
     }
 
@@ -118,68 +121,50 @@ export function TransactionDetailView({
         category_id: categoryId,
         payment_method_id: paymentMethodId || null,
         context_id: contextId || null,
-        // location_id: locationId || null,
         notes: notes.trim() || null,
       });
       onBack();
     } catch (err: any) {
-      setError(err.message || 'Erro ao atualizar lançamento.');
+      setError(err.message || t('extrato.detail.saveError'));
     } finally {
       setIsSaving(false);
     }
   };
 
-const handleDuplicateToday = async () => {
+  const handleDuplicateToday = async () => {
     const amount = amountCents / 100;
-    const formattedVal = new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(amount);
-
-    const confirmed = window.confirm(
-      `Repetir "${description.trim() || transaction.description}" (${formattedVal}) na data de hoje?`
-    );
-    if (!confirmed) return;
-
     setIsDuplicating(true);
     setError(null);
     try {
       await addTransaction({
         description: description.trim() || transaction.description,
         amount,
-        date: getTodayLocalISO(),
+        date: getLocalDateISO(0),
         type,
         category_id: categoryId,
         payment_method_id: paymentMethodId || null,
         context_id: contextId || null,
-        // location_id: locationId || null,
         notes: notes.trim() || null,
         installments: 1,
       });
       onBack();
     } catch (err: any) {
-      setError(err.message || 'Erro ao duplicar lançamento.');
+      setError(err.message || t('extrato.detail.repeatError'));
+      setConfirmRepeat(false);
     } finally {
       setIsDuplicating(false);
     }
   };
 
   const handleDelete = async () => {
-    const isParcel =
-      transaction.installment_total && transaction.installment_total > 1;
-    const msg = isParcel
-      ? `Excluir apenas a parcela ${transaction.installment_current}/${transaction.installment_total} de "${transaction.description}"?`
-      : `Excluir o lançamento "${transaction.description}"?`;
-
-    if (!window.confirm(msg)) return;
-
     setIsSaving(true);
     setError(null);
     try {
       await removeTransaction(transaction.id);
       onBack();
     } catch (err: any) {
-      setError(err.message || 'Erro ao excluir lançamento.');
+      setError(err.message || t('extrato.detail.deleteError'));
+      setConfirmDelete(false);
     } finally {
       setIsSaving(false);
     }
@@ -200,65 +185,127 @@ const handleDuplicateToday = async () => {
     );
   }
 
+  const isParcel = Boolean(
+    transaction.installment_total && transaction.installment_total > 1
+  );
+
   return (
-    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
+    <div
+      style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+      className="p-5 max-w-md mx-auto flex flex-col gap-4"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={onBack}
+            aria-label={t('common.back')}
             style={{
               backgroundColor: currentTheme.bgCard,
               color: currentTheme.primaryText,
             }}
-            className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
+            className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform shrink-0"
           >
             <ArrowLeft size={20} />
           </button>
-          <div>
+          <div className="min-w-0">
             <span
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Detalhes da Volta
+              {t('extrato.detail.subtitle')}
             </span>
             <h2
               style={{ color: currentTheme.primaryText }}
-              className="text-lg font-black uppercase"
+              className="text-lg font-black uppercase truncate"
             >
-              Editar Lançamento
+              {t('extrato.detail.title')}
             </h2>
           </div>
         </div>
 
-        {/* Botão Duplicar para Hoje */}
         <button
           type="button"
-          onClick={handleDuplicateToday}
+          onClick={() => {
+            setConfirmDelete(false);
+            setConfirmRepeat((v) => !v);
+          }}
           disabled={isDuplicating || isSaving}
           style={{
             backgroundColor: currentTheme.bgCard,
             color: currentTheme.primary,
           }}
-          className="px-3 py-2 rounded-xl text-[11px] font-black uppercase flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
-          title="Criar uma cópia igual na data de hoje"
+          className="px-3 py-2 rounded-xl text-[11px] font-black uppercase flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 shrink-0"
         >
           {isDuplicating ? (
             <Loader2 className="animate-spin" size={14} />
           ) : (
             <Copy size={14} />
           )}
-          Repetir hoje
+          {t('extrato.detail.repeatToday')}
         </button>
       </div>
 
-      {/* Badges informativos de origem (Parcela / Caixinha / Recorrente) */}
-      {(transaction.installment_total && transaction.installment_total > 1) ||
-      linkedGoal ||
-      linkedBill ? (
+      {/* Confirmação Inline: Repetir Hoje */}
+      {confirmRepeat && (
+        <div
+          style={{
+            backgroundColor: `${currentTheme.primary}18`,
+            borderColor: `${currentTheme.primary}45`,
+          }}
+          className="p-4 rounded-2xl border flex flex-col gap-3"
+        >
+          <div className="text-center">
+            <p
+              style={{ color: currentTheme.primaryText }}
+              className="text-xs font-black uppercase"
+            >
+              {t('extrato.detail.repeatConfirmTitle')}
+            </p>
+            <p
+              style={{ color: currentTheme.secondaryText }}
+              className="text-xs mt-0.5"
+            >
+              {t('extrato.detail.repeatConfirmMessage', {
+                description: description.trim() || transaction.description,
+                value: formatCurrency(amountCents / 100, locale),
+              })}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmRepeat(false)}
+              disabled={isDuplicating}
+              style={{
+                backgroundColor: currentTheme.bgCard,
+                color: currentTheme.primaryText,
+              }}
+              className="py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicateToday}
+              disabled={isDuplicating}
+              style={{
+                backgroundColor: currentTheme.primary,
+                color: currentTheme.primaryText,
+              }}
+              className="py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer disabled:opacity-50"
+            >
+              {t('common.confirm')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Badges informativos de origem */}
+      {(isParcel || linkedGoal || linkedBill) && (
         <div className="flex flex-wrap gap-2">
-          {transaction.installment_total && transaction.installment_total > 1 && (
+          {isParcel && (
             <button
               type="button"
               onClick={() => {
@@ -274,14 +321,30 @@ const handleDuplicateToday = async () => {
             >
               <Layers size={13} />
               <span>
-                Parcela {transaction.installment_current} de{' '}
-                {transaction.installment_total}
+                {t('extrato.detail.installmentBadge', {
+                  current: transaction.installment_current,
+                  total: transaction.installment_total,
+                })}
               </span>
               {transaction.installment_group_id && <ChevronRight size={14} />}
             </button>
           )}
+
+          {linkedGoal && (
+            <span className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-purple-500/15 text-purple-300 flex items-center gap-1.5">
+              <Target size={13} />
+              {t('extrato.detail.goalBadge', { name: linkedGoal.name })}
+            </span>
+          )}
+
+          {linkedBill && (
+            <span className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-sky-500/15 text-sky-300 flex items-center gap-1.5">
+              <Repeat size={13} />
+              {t('extrato.detail.billBadge', { name: linkedBill.name })}
+            </span>
+          )}
         </div>
-      ) : null}
+      )}
 
       {error && (
         <div className="p-3 rounded-xl bg-red-500/20 border border-red-500 text-red-200 text-xs font-bold">
@@ -289,7 +352,7 @@ const handleDuplicateToday = async () => {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
+      <form onSubmit={handleSave} className="flex flex-col gap-3.5">
         {/* Tipo: Saída / Entrada */}
         <div
           style={{ backgroundColor: currentTheme.bgCard }}
@@ -308,7 +371,7 @@ const handleDuplicateToday = async () => {
             }}
             className="py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-colors"
           >
-            Saída
+            {t('extrato.detail.expense')}
           </button>
           <button
             type="button"
@@ -320,7 +383,7 @@ const handleDuplicateToday = async () => {
             }}
             className="py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer transition-colors"
           >
-            Entrada
+            {t('extrato.detail.income')}
           </button>
         </div>
 
@@ -338,12 +401,12 @@ const handleDuplicateToday = async () => {
           <input
             type="text"
             inputMode="numeric"
-            value={(amountCents / 100).toLocaleString('pt-BR', {
+            value={(amountCents / 100).toLocaleString(locale, {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}
             onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '');
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
               setAmountCents(Number(digits));
             }}
             style={{ color: currentTheme.primaryText }}
@@ -352,167 +415,90 @@ const handleDuplicateToday = async () => {
           />
         </div>
 
-        {/* Descrição e Data */}
-        <div className="grid grid-cols-3 gap-3">
-          <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="col-span-2 p-3.5 rounded-xl"
+        {/* Descrição */}
+        <div
+          style={{ backgroundColor: currentTheme.bgCard }}
+          className="p-3.5 rounded-xl"
+        >
+          <label
+            style={{ color: currentTheme.secondaryText }}
+            className="text-[10px] font-bold uppercase block mb-1"
           >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Descrição *
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={{ color: currentTheme.primaryText }}
-              className="w-full text-sm font-semibold bg-transparent focus:outline-none"
-              required
-            />
-          </div>
-
-          <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="col-span-1 p-3.5 rounded-xl"
-          >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Data *
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={{ color: currentTheme.primaryText }}
-              className="w-full text-xs font-semibold bg-transparent focus:outline-none"
-              required
-            />
-          </div>
+            {t('extrato.detail.description')} *
+          </label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ color: currentTheme.primaryText }}
+            className="w-full text-sm font-semibold bg-transparent focus:outline-none"
+            required
+          />
         </div>
 
-        {/* Categoria & Forma de Pagamento */}
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="p-3.5 rounded-xl"
+        {/* Data (largura total para não cortar no iOS) */}
+        <div
+          style={{ backgroundColor: currentTheme.bgCard }}
+          className="p-3.5 rounded-xl"
+        >
+          <label
+            style={{ color: currentTheme.secondaryText }}
+            className="text-[10px] font-bold uppercase block mb-1"
           >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Categoria *
-            </label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              style={{
-                color: currentTheme.primaryText,
-                backgroundColor: currentTheme.bgCard,
-              }}
-              className="w-full text-xs font-bold focus:outline-none cursor-pointer"
-              required
-            >
-              {filteredCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="p-3.5 rounded-xl"
-          >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Pagamento
-            </label>
-            <select
-              value={paymentMethodId}
-              onChange={(e) => setPaymentMethodId(e.target.value)}
-              style={{
-                color: currentTheme.primaryText,
-                backgroundColor: currentTheme.bgCard,
-              }}
-              className="w-full text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Nenhum</option>
-              {paymentMethods.map((pm) => (
-                <option key={pm.id} value={pm.id}>
-                  {pm.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            {t('extrato.detail.date')} *
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{ color: currentTheme.primaryText, colorScheme: 'dark' }}
+            className="w-full min-w-0 text-sm font-semibold bg-transparent focus:outline-none"
+            required
+          />
         </div>
 
-        {/* Contexto & Local */}
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="p-3.5 rounded-xl"
-          >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Contexto
-            </label>
-            <select
-              value={contextId}
-              onChange={(e) => setContextId(e.target.value)}
-              style={{
-                color: currentTheme.primaryText,
-                backgroundColor: currentTheme.bgCard,
-              }}
-              className="w-full text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Nenhum</option>
-              {contexts.map((ctx) => (
-                <option key={ctx.id} value={ctx.id}>
-                  #{ctx.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Categoria (com ícone e cor) */}
+        <SearchableSelect
+          label={t('extrato.detail.category')}
+          placeholder={t('extrato.detail.categoryPlaceholder')}
+          options={filteredCategories.map((cat) => ({
+            id: cat.id,
+            name: cat.name,
+            icon: cat.icon,
+            color: cat.color,
+          }))}
+          value={categoryId}
+          onChange={setCategoryId}
+          required
+        />
 
-          {/* <div
-            style={{ backgroundColor: currentTheme.bgCard }}
-            className="p-3.5 rounded-xl"
-          >
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Local
-            </label>
-            <select
-              value={locationId}
-              onChange={(e) => setLocationId(e.target.value)}
-              style={{
-                color: currentTheme.primaryText,
-                backgroundColor: currentTheme.bgCard,
-              }}
-              className="w-full text-xs font-bold focus:outline-none cursor-pointer"
-            >
-              <option value="">Nenhum</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name}
-                  {loc.city ? ` (${loc.city})` : ''}
-                </option>
-              ))}
-            </select>
-          </div> */}
-        </div>
+        {/* Forma de Pagamento (com ícone e cor) */}
+        <SearchableSelect
+          label={t('extrato.detail.payment')}
+          placeholder={t('extrato.detail.paymentPlaceholder')}
+          options={paymentMethods.map((pm) => ({
+            id: pm.id,
+            name: pm.name,
+            icon: normalizeIconName(pm.icon),
+            color: pm.color,
+          }))}
+          value={paymentMethodId}
+          onChange={setPaymentMethodId}
+        />
+
+        {/* Contexto (opcional) */}
+        {contexts.length > 0 && (
+          <SearchableSelect
+            label={t('extrato.detail.context')}
+            placeholder={t('extrato.detail.contextPlaceholder')}
+            options={contexts.map((ctx) => ({
+              id: ctx.id,
+              name: `#${ctx.name}`,
+            }))}
+            value={contextId}
+            onChange={setContextId}
+          />
+        )}
 
         {/* Observações */}
         <div
@@ -523,13 +509,13 @@ const handleDuplicateToday = async () => {
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase block mb-1"
           >
-            Observações (opcional)
+            {t('extrato.detail.notes')}
           </label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Detalhes extras sobre esse lançamento..."
+            placeholder={t('extrato.detail.notesPlaceholder')}
             style={{ color: currentTheme.primaryText }}
             className="w-full text-xs font-medium bg-transparent focus:outline-none resize-none"
           />
@@ -543,26 +529,72 @@ const handleDuplicateToday = async () => {
             backgroundColor: currentTheme.primary,
             color: currentTheme.primaryText,
           }}
-          className="py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-1"
+          className="w-full py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-1"
         >
           {isSaving ? (
             <Loader2 className="animate-spin" size={20} />
           ) : (
             <Check size={20} strokeWidth={3} />
           )}
-          Salvar Alterações
+          {t('common.saveChanges')}
         </button>
 
-        {/* Excluir */}
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isSaving}
-          className="py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
-        >
-          <Trash2 size={16} />
-          Excluir Lançamento
-        </button>
+        {/* Excluir com confirmação inline */}
+        {!confirmDelete ? (
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmRepeat(false);
+              setConfirmDelete(true);
+            }}
+            disabled={isSaving}
+            className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
+          >
+            <Trash2 size={16} />
+            {t('extrato.detail.deleteBtn')}
+          </button>
+        ) : (
+          <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 flex flex-col gap-3">
+            <div className="text-center">
+              <p className="text-xs font-black uppercase text-red-300">
+                {t('common.confirmDeleteTitle')}
+              </p>
+              <p className="text-xs text-red-200/80 mt-0.5">
+                {isParcel
+                  ? t('extrato.detail.deleteConfirmInstallment', {
+                      current: transaction.installment_current,
+                      total: transaction.installment_total,
+                      description: transaction.description,
+                    })
+                  : t('extrato.detail.deleteConfirmSingle', {
+                      description: transaction.description,
+                    })}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={isSaving}
+                style={{
+                  backgroundColor: currentTheme.bgCard,
+                  color: currentTheme.primaryText,
+                }}
+                className="py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isSaving}
+                className="py-2.5 rounded-xl text-xs font-black uppercase bg-red-500 text-white cursor-pointer disabled:opacity-50"
+              >
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
