@@ -17,7 +17,9 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
       {/* Header da Sub-tela */}
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={onBack}
+          aria-label={t('common.back')}
           style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
           className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
         >
@@ -28,7 +30,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest block"
           >
-            Setup do Cockpit
+            {t('garage.cockpitSetup')}
           </span>
           <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
             {t('garage.language')}
@@ -43,6 +45,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
           return (
             <button
               key={lang.code}
+              type="button"
               onClick={() => i18n.changeLanguage(lang.code)}
               style={{
                 backgroundColor: currentTheme.bgCard,
@@ -63,7 +66,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
                     style={{ color: currentTheme.secondaryText }}
                     className="text-[10px] font-bold uppercase"
                   >
-                    {lang.code.toUpperCase()}
+                    {lang.region}
                   </span>
                 </div>
               </div>
@@ -71,7 +74,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
               {isSelected && (
                 <div
                   style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
-                  className="w-7 h-7 rounded-full flex items-center justify-center"
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                 >
                   <Check size={16} strokeWidth={3} />
                 </div>

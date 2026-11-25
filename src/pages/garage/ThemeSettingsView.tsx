@@ -1,4 +1,5 @@
 import { ArrowLeft, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 interface ThemeSettingsViewProps {
@@ -7,13 +8,16 @@ interface ThemeSettingsViewProps {
 
 export function ThemeSettingsView({ onBack }: ThemeSettingsViewProps) {
   const { currentTheme, availableThemes, setTheme } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
       {/* Header da Sub-tela */}
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={onBack}
+          aria-label={t('common.back')}
           style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
           className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
         >
@@ -24,10 +28,10 @@ export function ThemeSettingsView({ onBack }: ThemeSettingsViewProps) {
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest block"
           >
-            Setup do Cockpit
+            {t('garage.cockpitSetup')}
           </span>
           <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
-            Escuderia & Tema
+            {t('garage.theme')}
           </h2>
         </div>
       </div>
@@ -39,6 +43,7 @@ export function ThemeSettingsView({ onBack }: ThemeSettingsViewProps) {
           return (
             <button
               key={theme.id}
+              type="button"
               onClick={() => setTheme(theme.id)}
               style={{
                 backgroundColor: theme.bgCard,
@@ -75,7 +80,6 @@ export function ThemeSettingsView({ onBack }: ThemeSettingsViewProps) {
                   <p style={{ color: theme.secondaryText }} className="text-[11px] font-medium">
                     {theme.subtitle}
                   </p>
-                  {/* Paleta de preview da equipe */}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <span
                       style={{ backgroundColor: theme.bgDark }}
