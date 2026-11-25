@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
-import { SUPPORTED_LANGUAGES } from '../i18n';
+import { useData } from '../context/DataContext';
+import { getAppLocale, SUPPORTED_LANGUAGES } from '../i18n';
 import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken } from '../api/client';
 import { ThemeSettingsView } from './garage/ThemeSettingsView';
 import { LanguageSettingsView } from './garage/LanguageSettingsView';
@@ -44,13 +45,21 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
     return () => onSubScreenChange?.(false);
   }, [section, onSubScreenChange]);
 
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { syncAll, isSyncing, lastSyncedAt } = useData();
+  const locale = getAppLocale(i18n.language);
 
-  const handleSyncData = () => {
-    setIsSyncing(true);
-    // Na próxima etapa ligaremos direto ao syncAll() do DataContext sem recarregar a página
-    window.location.reload();
+  const handleSyncData = async () => {
+    await syncAll();
   };
+
+  const syncSubtitle = lastSyncedAt
+    ? t('garage.syncSuccess', {
+        time: lastSyncedAt.toLocaleTimeString(locale, {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      })
+    : t('garage.syncDataSubtitle');
 
   const currentLangCode = i18n.language?.slice(0, 2) || 'pt';
   const currentLangObj =
@@ -343,7 +352,7 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
                   style={{ color: currentTheme.secondaryText }}
                   className="text-[11px] font-medium block"
                 >
-                  {t('garage.lockAppSubtitle')}
+                  {syncSubtitle}
                 </span>
               </div>
             </div>

@@ -21,8 +21,11 @@ interface DataContextType {
   recurringBills: RecurringBill[];
   isLoadingCatalogs: boolean;
   isLoadingTransactions: boolean;
+  isSyncing: boolean;
+  lastSyncedAt: Date | null;
   ensureCatalogsLoaded: () => Promise<void>;
   ensureHomeLoaded: () => Promise<void>;
+  syncAll: () => Promise<boolean>;
 
   addTransaction: (tx: TransactionCreate) => Promise<void>;
   editTransaction: (id: string, data: Partial<TransactionCreate>) => Promise<void>;
@@ -40,7 +43,6 @@ interface DataContextType {
   editLocation: (id: string, data: Partial<Omit<LocationItem, 'id'>>) => Promise<void>;
   removeLocation: (id: string) => Promise<void>;
 
-
   addPaymentMethod: (data: Omit<PaymentMethod, 'id'>) => Promise<void>;
   editPaymentMethod: (id: string, data: Partial<Omit<PaymentMethod, 'id'>>) => Promise<void>;
   removePaymentMethod: (id: string) => Promise<void>;
@@ -49,11 +51,9 @@ interface DataContextType {
   editGoal: (id: string, data: Partial<Omit<Goal, 'id'>>) => Promise<void>;
   removeGoal: (id: string) => Promise<void>;
 
-
   addRecurringBill: (data: Omit<RecurringBill, 'id'>) => Promise<void>;
   editRecurringBill: (id: string, data: Partial<Omit<RecurringBill, 'id'>>) => Promise<void>;
   removeRecurringBill: (id: string) => Promise<void>;
-
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -65,62 +65,99 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>([]);
+
+  const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(false);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+
+  const hasAttemptedLoad = useRef(false);
   const hasAttemptedHomeLoad = useRef(false);
 
-  // Trava síncrona que impede loops de re-renderização no useEffect
-  const hasAttemptedLoad = useRef(false);
-
-  
-
-  const ensureCatalogsLoaded = useCallback(async () => {
-    if (hasAttemptedLoad.current) return;
-    hasAttemptedLoad.current = true;
-
+  const fetchCatalogs = useCallback(async () => {
     setIsLoadingCatalogs(true);
     try {
-      // Usa catch individual para que um 404 em uma rota não quebre as outras!
-      const [cats, pays, ctxs, locs, gls] = await Promise.all([
-        api.getCategories().catch((err) => { console.warn('Falha em categories:', err); return []; }),
-        api.getPaymentMethods().catch((err) => { console.warn('Falha em payment-methods:', err); return []; }),
-        api.getContexts().catch((err) => { console.warn('Falha em contexts:', err); return []; }),
-        api.getLocations().catch((err) => { console.warn('Falha em locations:', err); return []; }),
-        api.getGoals().catch((err) => { console.warn('Falha em goals:', err); return []; }),
+      const [cats, pays, ctxs, gls] = await Promise.all([
+        api.getCategories().catch((err) => {
+          console.warn('Falha em categories:', err);
+          return [];
+        }),
+        api.getPaymentMethods().catch((err) => {
+          console.warn('Falha em payment-methods:', err);
+          return [];
+        }),
+        api.getContexts().catch((err) => {
+          console.warn('Falha em contexts:', err);
+          return [];
+        }),
+        api.getGoals().catch((err) => {
+          console.warn('Falha em goals:', err);
+          return [];
+        }),
       ]);
 
       setCategories(cats);
       setPaymentMethods(pays);
       setContexts(ctxs);
-      setLocations(locs);
       setGoals(gls);
     } finally {
       setIsLoadingCatalogs(false);
     }
   }, []);
 
-  const ensureHomeLoaded = useCallback(async () => {
-    await ensureCatalogsLoaded();
-    if (hasAttemptedHomeLoad.current) return;
-    hasAttemptedHomeLoad.current = true;
-
+  const fetchHomeData = useCallback(async () => {
     setIsLoadingTransactions(true);
     try {
       const [txs, bills] = await Promise.all([
-        api.getTransactions().catch((err) => { console.warn('Falha em transactions:', err); return []; }),
-        api.getRecurringBills().catch((err) => { console.warn('Falha em recurring-bills:', err); return []; }),
+        api.getTransactions().catch((err) => {
+          console.warn('Falha em transactions:', err);
+          return [];
+        }),
+        api.getRecurringBills().catch((err) => {
+          console.warn('Falha em recurring-bills:', err);
+          return [];
+        }),
       ]);
       setTransactions(txs);
       setRecurringBills(bills);
     } finally {
       setIsLoadingTransactions(false);
     }
-  }, [ensureCatalogsLoaded]);
+  }, []);
+
+  const ensureCatalogsLoaded = useCallback(async () => {
+    if (hasAttemptedLoad.current) return;
+    hasAttemptedLoad.current = true;
+    await fetchCatalogs();
+  }, [fetchCatalogs]);
+
+  const ensureHomeLoaded = useCallback(async () => {
+    await ensureCatalogsLoaded();
+    if (hasAttemptedHomeLoad.current) return;
+    hasAttemptedHomeLoad.current = true;
+    await fetchHomeData();
+    setLastSyncedAt(new Date());
+  }, [ensureCatalogsLoaded, fetchHomeData]);
+
+  /** Força recarga completa de catálogos, transações e contas recorrentes sem recarregar a página */
+  const syncAll = useCallback(async (): Promise<boolean> => {
+    setIsSyncing(true);
+    try {
+      hasAttemptedLoad.current = true;
+      hasAttemptedHomeLoad.current = true;
+      await Promise.all([fetchCatalogs(), fetchHomeData()]);
+      setLastSyncedAt(new Date());
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [fetchCatalogs, fetchHomeData]);
 
   const addTransaction = async (data: TransactionCreate) => {
     const res = await api.createTransaction(data);
-    // O endpoint POST /transactions/ pode retornar uma lista (parcelas) ou objeto único
     const newItems = Array.isArray(res) ? res : [res];
     setTransactions((prev) => [...newItems, ...prev]);
   };
@@ -135,7 +172,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
   };
 
-  // Dentro do DataProvider:
   const addCategory = async (data: Omit<Category, 'id'>) => {
     const created = await api.createCategory(data);
     setCategories((prev) => [...prev, created]);
@@ -182,7 +218,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setLocations((prev) => prev.filter((l) => l.id !== id));
   };
 
-
   const addPaymentMethod = async (data: Omit<PaymentMethod, 'id'>) => {
     const created = await api.createPaymentMethod(data);
     setPaymentMethods((prev) => [...prev, created]);
@@ -216,7 +251,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setGoals((prev) => prev.filter((g) => g.id !== id));
   };
 
-
   const addRecurringBill = async (data: Omit<RecurringBill, 'id'>) => {
     const created = await api.createRecurringBill(data);
     setRecurringBills((prev) => [...prev, created]);
@@ -235,8 +269,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setRecurringBills((prev) => prev.filter((b) => b.id !== id));
   };
 
-  
-
   return (
     <DataContext.Provider
       value={{
@@ -246,11 +278,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         locations,
         goals,
         transactions,
-        isLoadingCatalogs,
         recurringBills,
+        isLoadingCatalogs,
+        isLoadingTransactions,
+        isSyncing,
+        lastSyncedAt,
         ensureCatalogsLoaded,
         ensureHomeLoaded,
-        isLoadingTransactions,
+        syncAll,
         addTransaction,
         editTransaction,
         removeTransaction,

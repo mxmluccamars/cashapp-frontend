@@ -1,5 +1,8 @@
 import { ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { getAppLocale } from '../../i18n';
+import { formatCurrency } from '../../utils/format';
 import { DynamicIcon } from '../DynamicIcon';
 import type { Category, Transaction } from '../../types/finance';
 
@@ -10,9 +13,6 @@ interface RecentTransactionsProps {
   onViewAll: () => void;
 }
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
 export function RecentTransactions({
   transactions,
   categories,
@@ -20,8 +20,10 @@ export function RecentTransactions({
   onViewAll,
 }: RecentTransactionsProps) {
   const { currentTheme } = useTheme();
-  const categoryMap = new Map(categories.map((c) => [c.id, c]));
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
 
+  const categoryMap = new Map(categories.map((c) => [c.id, c]));
   const recent = transactions.slice(0, 5);
 
   return (
@@ -31,7 +33,7 @@ export function RecentTransactions({
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase tracking-widest"
         >
-          Últimas Voltas
+          {t('home.recentTitle')}
         </span>
         <button
           type="button"
@@ -39,7 +41,7 @@ export function RecentTransactions({
           style={{ color: currentTheme.primary }}
           className="text-[11px] font-black uppercase flex items-center gap-1 cursor-pointer"
         >
-          Ver extrato
+          {t('home.viewStatement')}
           <ArrowRight size={13} />
         </button>
       </div>
@@ -50,7 +52,7 @@ export function RecentTransactions({
           className="p-6 rounded-2xl text-center"
         >
           <p style={{ color: currentTheme.secondaryText }} className="text-xs font-medium">
-            Nenhuma movimentação neste mês ainda.
+            {t('home.recentEmpty')}
           </p>
         </div>
       ) : (
@@ -90,9 +92,9 @@ export function RecentTransactions({
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span
                         style={{ color: currentTheme.secondaryText }}
-                        className="text-[11px] font-medium"
+                        className="text-[11px] font-medium truncate"
                       >
-                        {cat?.name || 'Sem categoria'} • {formattedDate}
+                        {cat?.name || t('extrato.noCategory')} • {formattedDate}
                       </span>
                       {tx.installment_total && tx.installment_total > 1 && (
                         <span
@@ -100,7 +102,7 @@ export function RecentTransactions({
                             backgroundColor: `${currentTheme.primary}20`,
                             color: currentTheme.primary,
                           }}
-                          className="text-[9px] font-black px-1.5 py-0.5 rounded-md"
+                          className="text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0"
                         >
                           {tx.installment_current}/{tx.installment_total}
                         </span>
@@ -117,7 +119,7 @@ export function RecentTransactions({
                 >
                   {hideValues
                     ? '••••'
-                    : `${isIncome ? '+' : '-'} ${formatBRL(Number(tx.amount))}`}
+                    : `${isIncome ? '+' : '-'} ${formatCurrency(Number(tx.amount), locale)}`}
                 </span>
               </div>
             );

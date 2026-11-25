@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { useData } from '../context/DataContext';
+import { getAppLocale } from '../i18n';
+import { formatCurrency } from '../utils/format';
 import { MonthSelector } from '../components/home/MonthSelector';
 import { BalanceCard } from '../components/home/BalanceCard';
 import { QuickShortcuts } from '../components/home/QuickShortcuts';
@@ -16,8 +19,13 @@ interface HomePageProps {
 
 type HomeSubScreen = 'main' | 'goals' | 'recurring';
 
+const HIDE_VALUES_KEY = 'cashapp_hide_values';
+
 export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const {
     transactions,
     categories,
@@ -30,19 +38,36 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth()); // 0 a 11
-  const [hideValues, setHideValues] = useState(false);
+  const [month, setMonth] = useState(now.getMonth());
+  const [hideValues, setHideValues] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(HIDE_VALUES_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [subScreen, setSubScreen] = useState<HomeSubScreen>('main');
 
   useEffect(() => {
     ensureHomeLoaded();
   }, [ensureHomeLoaded]);
 
-  // Esconde a BottomNav quando abrir Caixinhas ou Recorrentes
   useEffect(() => {
     onSubScreenChange?.(subScreen !== 'main');
     return () => onSubScreenChange?.(false);
   }, [subScreen, onSubScreenChange]);
+
+  const toggleHideValues = () => {
+    setHideValues((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(HIDE_VALUES_KEY, String(next));
+      } catch {
+        // Ignora falha de storage em modo privado
+      }
+      return next;
+    });
+  };
 
   const handlePrevMonth = () => {
     if (month === 0) {
@@ -62,7 +87,6 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
     }
   };
 
-  // Filtra transações do mês/ano selecionado e ordena da mais recente para a mais antiga
   const monthTransactions = useMemo(() => {
     const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     return transactions
@@ -70,11 +94,10 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [transactions, year, month]);
 
-  // Cálculos do Balanço (Entradas, Saídas, À Vista vs Cartão)
   const { income, expense, cashExpense, creditExpense } = useMemo(() => {
     const creditIds = new Set(
       paymentMethods
-        .filter((pm) => pm.allows_installments || pm.allow_installments)
+        .filter((pm) => Boolean(pm.allow_installments || pm.allows_installments))
         .map((pm) => pm.id)
     );
 
@@ -97,12 +120,14 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
     );
   }, [monthTransactions, paymentMethods]);
 
-  // Radar de Tetos: categorias que passaram de 75% do monthly_limit neste mês
   const budgetAlerts = useMemo(() => {
     const spentByCat = new Map<string, number>();
     monthTransactions.forEach((tx) => {
       if (tx.type === 'EXPENSE') {
-        spentByCat.set(tx.category_id, (spentByCat.get(tx.category_id) || 0) + Number(tx.amount));
+        spentByCat.set(
+          tx.category_id,
+          (spentByCat.get(tx.category_id) || 0) + Number(tx.amount)
+        );
       }
     });
 
@@ -118,12 +143,14 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
       .sort((a, b) => b.pct - a.pct);
   }, [categories, monthTransactions]);
 
-  // Totais para os cards de atalho
   const goalsSavedTotal = useMemo(
     () =>
       transactions
         .filter((tx) => Boolean(tx.goal_id))
-        .reduce((sum, tx) => sum + (tx.type === 'EXPENSE' ? Number(tx.amount) : -Number(tx.amount)), 0),
+        .reduce(
+          (sum, tx) => sum + (tx.type === 'EXPENSE' ? Number(tx.amount) : -Number(tx.amount)),
+          0
+        ),
     [transactions]
   );
 
@@ -163,7 +190,7 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Cockpit
+              {t('home.cockpit')}
             </span>
             <h1 style={{ color: currentTheme.primaryText }} className="text-base font-black uppercase">
               CashApp
@@ -173,10 +200,11 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
 
         <button
           type="button"
-          onClick={() => setHideValues((v) => !v)}
+          onClick={toggleHideValues}
+          aria-label={hideValues ? t('home.showValues') : t('home.hideValues')}
+          title={hideValues ? t('home.showValues') : t('home.hideValues')}
           style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
           className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
-          title={hideValues ? 'Mostrar valores' : 'Ocultar valores'}
         >
           {hideValues ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
@@ -196,7 +224,6 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
         </div>
       ) : (
         <>
-          {/* Card Principal de Balanço */}
           <BalanceCard
             income={income}
             expense={expense}
@@ -205,7 +232,6 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
             hideValues={hideValues}
           />
 
-          {/* Atalhos: Caixinhas e Contas Recorrentes */}
           <QuickShortcuts
             goalsCount={goals.length}
             goalsSavedTotal={goalsSavedTotal}
@@ -216,7 +242,7 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
             onOpenRecurring={() => setSubScreen('recurring')}
           />
 
-          {/* Radar de Tetos (Só aparece se alguma categoria passar de 75% do limite) */}
+          {/* Radar de Tetos */}
           {budgetAlerts.length > 0 && (
             <div
               style={{ backgroundColor: currentTheme.bgCard }}
@@ -228,16 +254,18 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
                   style={{ color: currentTheme.primaryText }}
                   className="text-xs font-black uppercase"
                 >
-                  Radar de Tetos
+                  {t('home.budgetRadar')}
                 </span>
               </div>
 
-              {budgetAlerts.map(({ category, pct }) => (
+              {budgetAlerts.map(({ category, spent, limit, pct }) => (
                 <div key={category.id} className="flex flex-col gap-1">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span style={{ color: currentTheme.primaryText }}>{category.name}</span>
-                    <span className={pct >= 100 ? 'text-red-400' : 'text-amber-400'}>
-                      {pct}% do limite
+                  <div className="flex items-center justify-between gap-2 text-xs font-bold">
+                    <span style={{ color: currentTheme.primaryText }} className="truncate">
+                      {category.name}
+                    </span>
+                    <span className={`shrink-0 ${pct >= 100 ? 'text-red-400' : 'text-amber-400'}`}>
+                      {t('home.limitPct', { pct })}
                     </span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
@@ -248,12 +276,19 @@ export function HomePage({ onOpenExtrato, onSubScreenChange }: HomePageProps) {
                       }`}
                     />
                   </div>
+                  {!hideValues && (
+                    <span
+                      style={{ color: currentTheme.secondaryText }}
+                      className="text-[10px] font-medium"
+                    >
+                      {formatCurrency(spent, locale)} / {formatCurrency(limit, locale)}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Mini Extrato */}
           <RecentTransactions
             transactions={monthTransactions}
             categories={categories}

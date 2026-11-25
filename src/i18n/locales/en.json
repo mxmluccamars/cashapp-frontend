@@ -203,5 +203,28 @@
       "deleteAllConfirmMessage": "Delete all {{count}} instalments of \"{{description}}\" ({{total}})? This action cannot be undone.",
       "deleteAllError": "Failed to delete instalments."
     }
+  },
+  "home": {
+    "cockpit": "Cockpit",
+    "showValues": "Show values",
+    "hideValues": "Hide values",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "balanceTitle": "Monthly Balance",
+    "income": "Income",
+    "expenses": "Expenses",
+    "cashLabel": "Cash / Pix:",
+    "cardLabel": "Card:",
+    "goals": "Goals",
+    "goalSingular": "goal",
+    "goalPlural": "goals",
+    "recurring": "Recurring",
+    "activeSingular": "active",
+    "activePlural": "active",
+    "budgetRadar": "Budget Radar",
+    "limitPct": "{{pct}}% of limit",
+    "recentTitle": "Recent Laps",
+    "viewStatement": "View statement",
+    "recentEmpty": "No transactions in this month yet."
   }
 }

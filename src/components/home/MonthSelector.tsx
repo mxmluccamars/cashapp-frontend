@@ -1,5 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { getAppLocale } from '../../i18n';
 
 interface MonthSelectorProps {
   year: number;
@@ -10,8 +12,10 @@ interface MonthSelectorProps {
 
 export function MonthSelector({ year, month, onPrev, onNext }: MonthSelectorProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
 
-  const label = new Intl.DateTimeFormat('pt-BR', {
+  const label = new Intl.DateTimeFormat(locale, {
     month: 'long',
     year: 'numeric',
   }).format(new Date(year, month, 1));
@@ -24,6 +28,7 @@ export function MonthSelector({ year, month, onPrev, onNext }: MonthSelectorProp
       <button
         type="button"
         onClick={onPrev}
+        aria-label={t('home.prevMonth')}
         style={{ color: currentTheme.primaryText }}
         className="p-2 rounded-xl cursor-pointer active:scale-90 transition-transform"
       >
@@ -40,6 +45,7 @@ export function MonthSelector({ year, month, onPrev, onNext }: MonthSelectorProp
       <button
         type="button"
         onClick={onNext}
+        aria-label={t('home.nextMonth')}
         style={{ color: currentTheme.primaryText }}
         className="p-2 rounded-xl cursor-pointer active:scale-90 transition-transform"
       >

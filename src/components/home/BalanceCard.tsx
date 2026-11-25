@@ -1,5 +1,8 @@
 import { ArrowDownLeft, ArrowUpRight, CreditCard, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { getAppLocale } from '../../i18n';
+import { formatCurrency } from '../../utils/format';
 
 interface BalanceCardProps {
   income: number;
@@ -9,9 +12,6 @@ interface BalanceCardProps {
   hideValues: boolean;
 }
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
 export function BalanceCard({
   income,
   expense,
@@ -20,8 +20,11 @@ export function BalanceCard({
   hideValues,
 }: BalanceCardProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const balance = income - expense;
-  const mask = (val: number) => (hideValues ? 'R$ •••••' : formatBRL(val));
+  const mask = (val: number) => (hideValues ? 'R$ •••••' : formatCurrency(val, locale));
 
   return (
     <div
@@ -31,19 +34,13 @@ export function BalanceCard({
       }}
       className="p-5 rounded-3xl border relative overflow-hidden flex flex-col gap-4"
     >
-      {/* Faixa da escuderia no topo
-      <div
-        style={{ backgroundColor: currentTheme.primary }}
-        className="absolute top-0 left-0 right-0 h-1"
-      /> */}
-
       {/* Saldo Principal */}
       <div>
         <span
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase tracking-widest block mb-1"
         >
-          Balanço do Mês
+          {t('home.balanceTitle')}
         </span>
         <div
           style={{
@@ -69,7 +66,7 @@ export function BalanceCard({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block"
             >
-              Entradas
+              {t('home.income')}
             </span>
             <span className="text-xs font-black text-emerald-400 truncate block">
               {mask(income)}
@@ -95,7 +92,7 @@ export function BalanceCard({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block"
             >
-              Saídas
+              {t('home.expenses')}
             </span>
             <span
               style={{ color: currentTheme.primaryText }}
@@ -107,24 +104,24 @@ export function BalanceCard({
         </div>
       </div>
 
-      {/* Divisão À Vista vs. Fatura do Cartão */}
-      <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px]">
-        <div className="flex items-center gap-1.5">
-          <Zap size={13} className="text-emerald-400" />
-          <span style={{ color: currentTheme.secondaryText }} className="font-medium">
-            À vista:
+      {/* Divisão À Vista vs. Cartão */}
+      <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2 text-[11px]">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Zap size={13} className="text-emerald-400 shrink-0" />
+          <span style={{ color: currentTheme.secondaryText }} className="font-medium shrink-0">
+            {t('home.cashLabel')}
           </span>
-          <span style={{ color: currentTheme.primaryText }} className="font-bold">
+          <span style={{ color: currentTheme.primaryText }} className="font-bold truncate">
             {mask(cashExpense)}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <CreditCard size={13} style={{ color: currentTheme.primary }} />
-          <span style={{ color: currentTheme.secondaryText }} className="font-medium">
-            Cartão:
+        <div className="flex items-center gap-1.5 min-w-0">
+          <CreditCard size={13} style={{ color: currentTheme.primary }} className="shrink-0" />
+          <span style={{ color: currentTheme.secondaryText }} className="font-medium shrink-0">
+            {t('home.cardLabel')}
           </span>
-          <span style={{ color: currentTheme.primaryText }} className="font-bold">
+          <span style={{ color: currentTheme.primaryText }} className="font-bold truncate">
             {mask(creditExpense)}
           </span>
         </div>

@@ -203,5 +203,28 @@
       "deleteAllConfirmMessage": "Excluir todas as {{count}} parcelas de \"{{description}}\" ({{total}})? Esta ação não pode ser desfeita.",
       "deleteAllError": "Erro ao excluir parcelas."
     }
+  },
+  "home": {
+    "cockpit": "Cockpit",
+    "showValues": "Mostrar valores",
+    "hideValues": "Ocultar valores",
+    "prevMonth": "Mês anterior",
+    "nextMonth": "Próximo mês",
+    "balanceTitle": "Balanço do Mês",
+    "income": "Entradas",
+    "expenses": "Saídas",
+    "cashLabel": "À vista:",
+    "cardLabel": "Cartão:",
+    "goals": "Caixinhas",
+    "goalSingular": "meta",
+    "goalPlural": "metas",
+    "recurring": "Recorrentes",
+    "activeSingular": "ativa",
+    "activePlural": "ativas",
+    "budgetRadar": "Radar de Tetos",
+    "limitPct": "{{pct}}% do limite",
+    "recentTitle": "Últimas Voltas",
+    "viewStatement": "Ver extrato",
+    "recentEmpty": "Nenhuma movimentação neste mês ainda."
   }
 }
