@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { icons, Search } from 'lucide-react';
+import { icons, Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { DynamicIcon } from './DynamicIcon';
 
@@ -9,10 +10,8 @@ interface IconPickerProps {
   onChange: (iconName: string) => void;
 }
 
-// Todos os nomes de ícones disponíveis no lucide-react
 const ALL_ICON_NAMES = Object.keys(icons) as (keyof typeof icons)[];
 
-// Sugestões iniciais exibidas quando a busca está vazia
 const POPULAR_ICONS: (keyof typeof icons)[] = [
   'Tag', 'Utensils', 'Coffee', 'ShoppingCart', 'ShoppingBag', 'Car',
   'Fuel', 'Bus', 'Plane', 'Zap', 'Wifi',
@@ -22,6 +21,7 @@ const POPULAR_ICONS: (keyof typeof icons)[] = [
 
 export function IconPicker({ value, color, onChange }: IconPickerProps) {
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
 
   const visibleIcons = useMemo(() => {
@@ -30,7 +30,7 @@ export function IconPicker({ value, color, onChange }: IconPickerProps) {
 
     return ALL_ICON_NAMES.filter((name) =>
       name.toLowerCase().includes(query)
-    ).slice(0, 36); // Limita a 36 por vez para não pesar no mobile
+    ).slice(0, 36);
   }, [search]);
 
   return (
@@ -40,10 +40,9 @@ export function IconPicker({ value, color, onChange }: IconPickerProps) {
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase"
         >
-          Ícone ({value || 'Tag'})
+          {t('iconPicker.label', { name: value || 'Tag' })}
         </label>
 
-        {/* Preview do ícone selecionado com a cor escolhida */}
         <div
           style={{ backgroundColor: `${color}25`, color }}
           className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -52,26 +51,35 @@ export function IconPicker({ value, color, onChange }: IconPickerProps) {
         </div>
       </div>
 
-      {/* Campo de busca de ícones */}
       <div
         style={{ backgroundColor: currentTheme.bgDark }}
         className="px-3 py-2 rounded-xl flex items-center gap-2"
       >
-        <Search size={15} style={{ color: currentTheme.secondaryText }} />
+        <Search size={15} style={{ color: currentTheme.secondaryText }} className="shrink-0" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar ícone em inglês (ex: car, food, home)..."
+          placeholder={t('iconPicker.searchPlaceholder')}
           style={{ color: currentTheme.primaryText }}
           className="w-full text-xs font-medium bg-transparent focus:outline-none"
         />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            aria-label={t('common.clearSearch')}
+            style={{ color: currentTheme.secondaryText }}
+            className="cursor-pointer p-0.5 shrink-0"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
-      {/* Grade de ícones */}
       {visibleIcons.length === 0 ? (
         <p style={{ color: currentTheme.secondaryText }} className="text-xs text-center py-4">
-          Nenhum ícone encontrado para "{search}"
+          {t('iconPicker.empty', { query: search })}
         </p>
       ) : (
         <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto pr-1">

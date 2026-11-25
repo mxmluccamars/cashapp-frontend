@@ -14,7 +14,11 @@
     "clearSearch": "Clear search",
     "minCharsError": "Name must be at least 2 characters long.",
     "confirmDeleteTitle": "Confirm deletion?",
-    "confirmDeleteMessage": "Delete \"{{name}}\"?"
+    "confirmDeleteMessage": "Delete \"{{name}}\"?",
+    "searchPlaceholder": "Search...",
+    "noResults": "No results for \"{{query}}\"",
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "nav": {
     "home": "Home",
@@ -23,23 +27,34 @@
     "telemetria": "Telemetry",
     "garage": "Garage"
   },
+  "iconPicker": {
+    "label": "Icon ({{name}})",
+    "searchPlaceholder": "Search icon (e.g. car, food, home)...",
+    "empty": "No icons found for \"{{query}}\""
+  },
   "pitstop": {
     "subtitle": "Box Confirmed",
     "title": "New Pit Stop",
-    "expense": "Expense",
-    "income": "Income",
+    "loading": "Loading Box telemetry...",
+    "close": "Close",
+    "expense": "Outflow (Expense)",
+    "income": "Inflow (Income)",
     "amount": "Total Amount (R$)",
     "description": "Description",
+    "descriptionExpensePlaceholder": "e.g. Bakery, Petrol, Lunch...",
+    "descriptionIncomePlaceholder": "e.g. Salary, Freelance...",
     "date": "Date",
     "category": "Category",
+    "categoryPlaceholder": "e.g. Food...",
     "paymentExpense": "Payment Method",
     "paymentIncome": "Received via",
-    "installments": "Instalments",
+    "installments": "Number of Instalments",
+    "installmentsPlaceholder": "Enter number of instalments (e.g. 3)",
     "installmentsDisplay": "{{count}}x instalments of R$ {{value}}",
-    "context": "Context",
-    "location": "Location",
     "confirmExpense": "Confirm Expense",
-    "confirmIncome": "Confirm Income"
+    "confirmIncome": "Confirm Income",
+    "validationError": "Please enter an amount greater than 0, description, category and payment method.",
+    "submitError": "Failed to save transaction."
   },
   "garage": {
     "paddockSetup": "Paddock Setup",

@@ -14,7 +14,11 @@
     "clearSearch": "Limpar busca",
     "minCharsError": "O nome precisa ter pelo menos 2 caracteres.",
     "confirmDeleteTitle": "Confirmar exclusão?",
-    "confirmDeleteMessage": "Deseja excluir \"{{name}}\"?"
+    "confirmDeleteMessage": "Deseja excluir \"{{name}}\"?",
+    "searchPlaceholder": "Pesquisar...",
+    "noResults": "Nenhum resultado para \"{{query}}\"",
+    "today": "Hoje",
+    "yesterday": "Ontem"
   },
   "nav": {
     "home": "Início",
@@ -23,23 +27,34 @@
     "telemetria": "Telemetria",
     "garage": "Garagem"
   },
+  "iconPicker": {
+    "label": "Ícone ({{name}})",
+    "searchPlaceholder": "Buscar ícone em inglês (ex: car, food, home)...",
+    "empty": "Nenhum ícone encontrado para \"{{query}}\""
+  },
   "pitstop": {
     "subtitle": "Box Confirmado",
     "title": "Novo Pit Stop",
-    "expense": "Despesa",
-    "income": "Receita",
+    "loading": "Carregando telemetria do Box...",
+    "close": "Fechar",
+    "expense": "Saída (Despesa)",
+    "income": "Entrada (Receita)",
     "amount": "Valor Total (R$)",
     "description": "Descrição",
+    "descriptionExpensePlaceholder": "Ex: Padaria, Gasolina, Almoço...",
+    "descriptionIncomePlaceholder": "Ex: Salário, Freela...",
     "date": "Data",
     "category": "Categoria",
+    "categoryPlaceholder": "Ex: Alimentação...",
     "paymentExpense": "Forma de Pagamento",
     "paymentIncome": "Recebido via",
-    "installments": "Parcelas",
+    "installments": "Número de Parcelas",
+    "installmentsPlaceholder": "Digite o nº de parcelas (ex: 3)",
     "installmentsDisplay": "{{count}}x parcelas de R$ {{value}}",
-    "context": "Contexto",
-    "location": "Local",
-    "confirmExpense": "Confirmar Despesa",
-    "confirmIncome": "Confirmar Receita"
+    "confirmExpense": "Confirmar Saída",
+    "confirmIncome": "Confirmar Entrada",
+    "validationError": "Informe um valor maior que 0, descrição, categoria e forma de pagamento.",
+    "submitError": "Erro ao registrar transação."
   },
   "garage": {
     "paddockSetup": "Setup do Paddock",

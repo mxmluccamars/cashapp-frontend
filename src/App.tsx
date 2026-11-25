@@ -68,6 +68,7 @@ export default function App() {
         style={{
           backgroundColor: currentTheme.bgDark,
           color: currentTheme.primaryText,
+          minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))',
         }}
         className="min-h-screen transition-colors duration-300"
       >

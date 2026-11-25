@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
+import { DynamicIcon } from './DynamicIcon';
 
 export interface SelectOption {
   id: string;
   name: string;
   subtitle?: string | null;
+  icon?: string | null;
+  color?: string | null;
 }
 
 interface SearchableSelectProps {
@@ -19,31 +23,32 @@ interface SearchableSelectProps {
 
 export function SearchableSelect({
   label,
-  placeholder = 'Pesquisar...',
+  placeholder,
   options,
   value,
   onChange,
   required = false,
 }: SearchableSelectProps) {
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.id === value);
+  const resolvedPlaceholder = placeholder || t('common.searchPlaceholder');
 
-  // Fecha a lista ao clicar fora do componente
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setSearch('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtra opções pelo que o usuário digita (ignorando maiúsculas e acentos)
   const normalize = (str: string) =>
     str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -78,14 +83,27 @@ export function SearchableSelect({
 
       <div
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 cursor-pointer"
+        className="flex items-center gap-2.5 cursor-pointer"
       >
-        <Search size={15} style={{ color: currentTheme.secondaryText }} />
+        {/* Mostra o ícone colorido da opção selecionada quando fechado, ou lupa ao buscar */}
+        {!isOpen && selectedOption?.icon ? (
+          <div
+            style={{
+              backgroundColor: `${selectedOption.color || currentTheme.primary}25`,
+              color: selectedOption.color || currentTheme.primary,
+            }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          >
+            <DynamicIcon name={selectedOption.icon} size={15} />
+          </div>
+        ) : (
+          <Search size={15} style={{ color: currentTheme.secondaryText }} className="shrink-0" />
+        )}
 
         <input
           type="text"
           value={isOpen ? search : selectedOption?.name || ''}
-          placeholder={selectedOption ? selectedOption.name : placeholder}
+          placeholder={selectedOption ? selectedOption.name : resolvedPlaceholder}
           onFocus={() => setIsOpen(true)}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -95,17 +113,35 @@ export function SearchableSelect({
           className="w-full text-sm font-semibold bg-transparent focus:outline-none placeholder:opacity-50"
         />
 
-        {value && !required ? (
+        {isOpen && search ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSearch('');
+            }}
+            aria-label={t('common.clearSearch')}
+            style={{ color: currentTheme.secondaryText }}
+            className="p-0.5 hover:opacity-80 cursor-pointer shrink-0"
+          >
+            <X size={15} />
+          </button>
+        ) : value && !required ? (
           <button
             type="button"
             onClick={handleClear}
+            aria-label={t('common.clearSearch')}
             style={{ color: currentTheme.secondaryText }}
-            className="p-0.5 hover:opacity-80"
+            className="p-0.5 hover:opacity-80 cursor-pointer shrink-0"
           >
             <X size={15} />
           </button>
         ) : (
-          <ChevronDown size={15} style={{ color: currentTheme.secondaryText }} />
+          <ChevronDown
+            size={15}
+            style={{ color: currentTheme.secondaryText }}
+            className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          />
         )}
       </div>
 
@@ -116,11 +152,13 @@ export function SearchableSelect({
             backgroundColor: currentTheme.bgCard,
             borderColor: currentTheme.secondary,
           }}
-          className="absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-2xl max-h-44 overflow-y-auto z-50 divide-y divide-white/5"
+          className="absolute left-0 right-0 top-full mt-1.5 rounded-xl border shadow-2xl max-h-56 overflow-y-auto z-50 divide-y divide-white/5"
         >
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt) => {
               const isSelected = opt.id === value;
+              const optColor = opt.color || currentTheme.primary;
+
               return (
                 <button
                   key={opt.id}
@@ -130,13 +168,27 @@ export function SearchableSelect({
                     backgroundColor: isSelected ? `${currentTheme.primary}22` : 'transparent',
                     color: isSelected ? currentTheme.primary : currentTheme.primaryText,
                   }}
-                  className="w-full text-left px-3.5 py-2.5 text-xs font-bold flex items-center justify-between hover:opacity-80 transition-opacity cursor-pointer"
+                  className="w-full text-left px-3.5 py-2.5 text-xs font-bold flex items-center justify-between gap-2.5 hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <span>{opt.name}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {opt.icon && (
+                      <div
+                        style={{
+                          backgroundColor: `${optColor}25`,
+                          color: optColor,
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      >
+                        <DynamicIcon name={opt.icon} size={15} />
+                      </div>
+                    )}
+                    <span className="truncate">{opt.name}</span>
+                  </div>
+
                   {opt.subtitle && (
                     <span
                       style={{ color: currentTheme.secondaryText }}
-                      className="text-[10px] font-medium"
+                      className="text-[10px] font-medium shrink-0"
                     >
                       {opt.subtitle}
                     </span>
@@ -149,7 +201,7 @@ export function SearchableSelect({
               style={{ color: currentTheme.secondaryText }}
               className="p-3 text-xs text-center"
             >
-              Nenhum resultado para "{search}"
+              {t('common.noResults', { query: search })}
             </div>
           )}
         </div>
