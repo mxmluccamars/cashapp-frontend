@@ -9,6 +9,8 @@ import {
   SlidersHorizontal,
   Lock,
   RefreshCw,
+  Cog,
+  Server,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
@@ -20,6 +22,7 @@ import { LanguageSettingsView } from './garage/LanguageSettingsView';
 import { CategoriesCrudView } from './garage/CategoriesCrudView';
 import { ContextsCrudView } from './garage/ContextsCrudView';
 import { PaymentsCrudView } from './garage/PaymentsCrudView';
+import { SystemStatusView } from './garage/SystemStatusView';
 
 type GarageSection =
   | 'menu'
@@ -27,7 +30,8 @@ type GarageSection =
   | 'language'
   | 'categories'
   | 'contexts'
-  | 'payments';
+  | 'payments'
+  | 'system';
 
 
 
@@ -90,6 +94,10 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
     return <PaymentsCrudView onBack={() => setSection('menu')} />;
   }
 
+  if (section === 'system') {
+    return <SystemStatusView onBack={() => setSection('menu')} />;
+  }
+
   const appearanceItems = [
     {
       id: 'theme' as GarageSection,
@@ -123,7 +131,7 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
       label: t('garage.payments'),
       subtitle: t('garage.paymentsSubtitle'),
       icon: CreditCard,
-    },
+    }
   ];
 
   return (
@@ -295,6 +303,37 @@ export function GaragePage({ onSubScreenChange }: GaragePageProps) {
           style={{ backgroundColor: currentTheme.bgCard }}
           className="rounded-2xl overflow-hidden divide-y divide-white/5"
         >
+          {/* Botão Infraestrutura (Neon & Render) */}
+          <button
+            type="button"
+            onClick={() => setSection('system')}
+            className="w-full p-4 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                <Server size={18} />
+              </div>
+              <div className="text-left min-w-0">
+                <span
+                  style={{ color: currentTheme.primaryText }}
+                  className="text-sm font-bold block truncate"
+                >
+                  {t('garage.systemStatus')}
+                </span>
+                <span
+                  style={{ color: currentTheme.secondaryText }}
+                  className="text-[11px] font-medium block truncate"
+                >
+                  {t('garage.systemStatusSubtitle')}
+                </span>
+              </div>
+            </div>
+            <ChevronRight
+              size={18}
+              style={{ color: currentTheme.secondaryText }}
+              className="shrink-0"
+            />
+          </button>
           {/* Botão Sincronizar Dados */}
           <button
             type="button"

@@ -9,6 +9,7 @@ import type {
   RecurringBill,
 
 } from '../types/finance';
+import type { SystemMetrics } from '../types/system';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 const TOKEN_STORAGE_KEY = 'cashapp_auth_token';
@@ -98,6 +99,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ pin }),
     }),
+
+
+  // Infraestrutura (Neon + Render + Postgres)
+  getSystemMetrics: (force = false): Promise<SystemMetrics> =>
+    request<SystemMetrics>(`/system/metrics${force ? '?force=true' : ''}`),
     
   // Catálogos para os selects do Pit Stop
   // getCategories: (): Promise<Category[]> => request<Category[]>('/categories/'),
