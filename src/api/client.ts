@@ -76,6 +76,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errBody = await response.json().catch(() => ({}));
+    if (Array.isArray(errBody.detail) && errBody.detail.length > 0) {
+      const first = errBody.detail[0];
+      const field = Array.isArray(first?.loc) ? first.loc.slice(1).join('.') : 'body';
+      throw new Error(`${field}: ${first?.msg || 'Validation error'}`);
+    }
     throw new Error(errBody.detail || `Erro ${response.status}`);
   }
 
@@ -216,7 +221,7 @@ export const api = {
     id: string,
     data: Partial<Omit<RecurringBill, 'id'>>
   ): Promise<RecurringBill> =>
-    request<RecurringBill>(`/recurring-_bills/${id}`, {
+    request<RecurringBill>(`/recurring_bills/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
