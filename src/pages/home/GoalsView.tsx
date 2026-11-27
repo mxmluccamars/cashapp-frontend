@@ -10,10 +10,14 @@ import {
   ArrowDownCircle,
   Calendar,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { useData } from '../../context/DataContext';
+import { getAppLocale } from '../../i18n';
 import { DynamicIcon } from '../../components/DynamicIcon';
 import { IconPicker } from '../../components/IconPicker';
+import { ColorPicker } from '../../components/ColorPicker';
+import { formatCurrency, getLocalDateISO } from '../../utils/format';
 import type { Goal } from '../../types/finance';
 
 interface GoalsViewProps {
@@ -25,11 +29,14 @@ const COLOR_PRESETS = [
   '#EF4444', '#EC4899', '#06B6D4', '#64748B',
 ];
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+const DEPOSIT_CATEGORY_ALIASES = ['aporte em metas', 'goal deposits'];
+const WITHDRAW_CATEGORY_ALIASES = ['resgate de metas', 'goal withdrawals'];
 
 export function GoalsView({ onBack }: GoalsViewProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const {
     goals,
     transactions,
@@ -42,11 +49,11 @@ export function GoalsView({ onBack }: GoalsViewProps) {
     addTransaction,
   } = useData();
 
-  // Navegação interna: lista -> detalhe -> formulário de criação/edição
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Goal | 'new' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Estado do painel rápido de Guardar / Resgatar
+  // Painel rápido de Guardar / Resgatar
   const [moveMode, setMoveMode] = useState<'deposit' | 'withdraw' | null>(null);
   const [moveCents, setMoveCents] = useState(0);
   const [movePaymentId, setMovePaymentId] = useState('');
@@ -62,7 +69,6 @@ export function GoalsView({ onBack }: GoalsViewProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calcula o saldo acumulado de cada caixinha: EXPENSE soma (+), INCOME subtrai (-)
   const balanceByGoal = useMemo(() => {
     const map = new Map<string, number>();
     transactions.forEach((tx) => {
@@ -74,9 +80,8 @@ export function GoalsView({ onBack }: GoalsViewProps) {
     return map;
   }, [transactions]);
 
-  // Formas de pagamento à vista (Pix, Dinheiro, etc.) para movimentar caixinha
   const cashPaymentMethods = useMemo(
-    () => paymentMethods.filter((pm) => !pm.allows_installments && !pm.allow_installments),
+    () => paymentMethods.filter((pm) => !pm.allow_installments && !pm.allows_installments),
     [paymentMethods]
   );
 
@@ -84,6 +89,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
 
   const openCreate = () => {
     setEditing('new');
+    setConfirmDelete(false);
     setName('');
     setDescription('');
     setTargetAmount('');
@@ -95,6 +101,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
 
   const openEdit = (goal: Goal) => {
     setEditing(goal);
+    setConfirmDelete(false);
     setName(goal.name);
     setDescription(goal.description || '');
     setTargetAmount(String(goal.target_amount));
@@ -107,11 +114,11 @@ export function GoalsView({ onBack }: GoalsViewProps) {
   const handleSaveGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim().length < 2) {
-      setError('O nome da caixinha precisa ter pelo menos 2 caracteres.');
+      setError(t('goals.validationName'));
       return;
     }
     if (!targetAmount || Number(targetAmount) <= 0) {
-      setError('Informe um valor alvo maior que zero.');
+      setError(t('goals.validationTarget'));
       return;
     }
 
@@ -134,7 +141,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
       }
       setEditing(null);
     } catch (err: any) {
-      setError(err.message || 'Erro ao salvar caixinha.');
+      setError(err.message || t('goals.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -142,7 +149,6 @@ export function GoalsView({ onBack }: GoalsViewProps) {
 
   const handleDeleteGoal = async () => {
     if (!editing || editing === 'new') return;
-    if (!window.confirm(`Excluir a caixinha "${editing.name}"?`)) return;
 
     setIsSaving(true);
     setError(null);
@@ -150,23 +156,27 @@ export function GoalsView({ onBack }: GoalsViewProps) {
       await removeGoal(editing.id);
       setEditing(null);
       setSelectedGoalId(null);
+      setConfirmDelete(false);
     } catch (err: any) {
-      setError(err.message || 'Erro ao excluir caixinha.');
+      setError(err.message || t('goals.deleteError'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Busca ou cria automaticamente a categoria dedicada ("Aporte em Metas" / "Resgate de Metas")
   const ensureGoalCategory = async (type: 'EXPENSE' | 'INCOME'): Promise<string> => {
-    const targetName = type === 'EXPENSE' ? 'Aporte em Metas' : 'Resgate de Metas';
+    const aliases =
+      type === 'EXPENSE' ? DEPOSIT_CATEGORY_ALIASES : WITHDRAW_CATEGORY_ALIASES;
     const existing = categories.find(
-      (c) => c.type === type && c.name.toLowerCase() === targetName.toLowerCase()
+      (c) => c.type === type && aliases.includes(c.name.trim().toLowerCase())
     );
     if (existing) return existing.id;
 
     const created = await addCategory({
-      name: targetName,
+      name:
+        type === 'EXPENSE'
+          ? t('goals.depositCategoryName')
+          : t('goals.withdrawCategoryName'),
       type,
       icon: 'PiggyBank',
       color: type === 'EXPENSE' ? '#8B5CF6' : '#10B981',
@@ -181,7 +191,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
 
     const amount = moveCents / 100;
     if (amount <= 0) {
-      setError('Digite um valor maior que zero.');
+      setError(t('goals.validationMove'));
       return;
     }
 
@@ -190,15 +200,14 @@ export function GoalsView({ onBack }: GoalsViewProps) {
     try {
       const txType = moveMode === 'deposit' ? 'EXPENSE' : 'INCOME';
       const categoryId = await ensureGoalCategory(txType);
-      const today = new Date().toISOString().split('T')[0];
 
       await addTransaction({
         description:
           moveMode === 'deposit'
-            ? `Aporte: ${selectedGoal.name}`
-            : `Resgate: ${selectedGoal.name}`,
+            ? t('goals.depositTxPrefix', { name: selectedGoal.name })
+            : t('goals.withdrawTxPrefix', { name: selectedGoal.name }),
         amount,
-        date: today,
+        date: getLocalDateISO(0),
         type: txType,
         category_id: categoryId,
         payment_method_id: movePaymentId || cashPaymentMethods[0]?.id || null,
@@ -209,7 +218,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
       setMoveMode(null);
       setMoveCents(0);
     } catch (err: any) {
-      setError(err.message || 'Erro ao registrar movimentação.');
+      setError(err.message || t('goals.moveError'));
     } finally {
       setIsSubmittingMove(false);
     }
@@ -222,11 +231,15 @@ export function GoalsView({ onBack }: GoalsViewProps) {
     const isNew = editing === 'new';
 
     return (
-      <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
+      <div
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+        className="p-5 max-w-md mx-auto flex flex-col gap-5"
+      >
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setEditing(null)}
+            aria-label={t('common.back')}
             style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
             className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
           >
@@ -237,10 +250,10 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Caixinhas
+              {t('goals.title')}
             </span>
             <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
-              {isNew ? 'Nova Caixinha' : 'Editar Caixinha'}
+              {isNew ? t('goals.newTitle') : t('goals.editTitle')}
             </h2>
           </div>
         </div>
@@ -257,13 +270,13 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block mb-1"
             >
-              Nome da Meta *
+              {t('goals.nameLabel')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Viagem Copa 2030, Reserva de Emergência..."
+              placeholder={t('goals.namePlaceholder')}
               style={{ color: currentTheme.primaryText }}
               className="w-full text-sm font-semibold bg-transparent focus:outline-none"
               required
@@ -275,103 +288,115 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block mb-1"
             >
-              Descrição (opcional)
+              {t('goals.descriptionLabel')}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalhes do objetivo..."
+              placeholder={t('goals.descriptionPlaceholder')}
               style={{ color: currentTheme.primaryText }}
               className="w-full text-sm font-semibold bg-transparent focus:outline-none"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
-              <label
-                style={{ color: currentTheme.secondaryText }}
-                className="text-[10px] font-bold uppercase block mb-1"
-              >
-                Valor Alvo (R$) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={targetAmount}
-                onChange={(e) => setTargetAmount(e.target.value)}
-                placeholder="10000.00"
-                style={{ color: currentTheme.primaryText }}
-                className="w-full text-sm font-semibold bg-transparent focus:outline-none"
-                required
-              />
-            </div>
-
-            <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
-              <label
-                style={{ color: currentTheme.secondaryText }}
-                className="text-[10px] font-bold uppercase block mb-1"
-              >
-                Data Limite
-              </label>
-              <input
-                type="date"
-                value={targetDate}
-                onChange={(e) => setTargetDate(e.target.value)}
-                style={{ color: currentTheme.primaryText }}
-                className="w-full text-sm font-semibold bg-transparent focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Cor */}
-          <div style={{ backgroundColor: currentTheme.bgCard }} className="p-4 rounded-xl">
+          <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
             <label
               style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-3"
+              className="text-[10px] font-bold uppercase block mb-1"
             >
-              Cor
+              {t('goals.targetAmountLabel')}
             </label>
-            <div className="flex flex-wrap gap-2.5">
-              {COLOR_PRESETS.map((hex) => (
-                <button
-                  key={hex}
-                  type="button"
-                  onClick={() => setColor(hex)}
-                  style={{
-                    backgroundColor: hex,
-                    outline: color === hex ? `3px solid ${currentTheme.primaryText}` : 'none',
-                    outlineOffset: '2px',
-                  }}
-                  className="w-8 h-8 rounded-full cursor-pointer transition-transform active:scale-90"
-                />
-              ))}
-            </div>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              value={targetAmount}
+              onChange={(e) => setTargetAmount(e.target.value)}
+              placeholder="10000.00"
+              style={{ color: currentTheme.primaryText }}
+              className="w-full text-sm font-semibold bg-transparent focus:outline-none"
+              required
+            />
           </div>
 
-          {/* Ícone */}
+          <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
+            <label
+              style={{ color: currentTheme.secondaryText }}
+              className="text-[10px] font-bold uppercase block mb-1"
+            >
+              {t('goals.targetDateLabel')}
+            </label>
+            <input
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              style={{ color: currentTheme.primaryText, colorScheme: 'dark' }}
+              className="w-full min-w-0 text-sm font-semibold bg-transparent focus:outline-none"
+            />
+          </div>
+
+          <ColorPicker value={color} onChange={setColor} presets={COLOR_PRESETS} />
+
           <IconPicker value={icon} color={color} onChange={setIcon} />
 
           <button
             type="submit"
             disabled={isSaving}
             style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
-            className="py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-2"
+            className="w-full py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-2"
           >
-            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} strokeWidth={3} />}
-            {isNew ? 'Criar Caixinha' : 'Salvar Alterações'}
+            {isSaving ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <Check size={20} strokeWidth={3} />
+            )}
+            {isNew ? t('goals.createBtn') : t('common.saveChanges')}
           </button>
 
-          {!isNew && (
+          {!isNew && !confirmDelete && (
             <button
               type="button"
-              onClick={handleDeleteGoal}
+              onClick={() => setConfirmDelete(true)}
               disabled={isSaving}
-              className="py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
+              className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
             >
               <Trash2 size={16} />
-              Excluir Caixinha
+              {t('goals.deleteBtn')}
             </button>
+          )}
+
+          {!isNew && confirmDelete && (
+            <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 flex flex-col gap-3">
+              <div className="text-center">
+                <p className="text-xs font-black uppercase text-red-300">
+                  {t('common.confirmDeleteTitle')}
+                </p>
+                <p className="text-xs text-red-200/80 mt-0.5">
+                  {t('common.confirmDeleteMessage', { name: editing.name })}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={isSaving}
+                  style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
+                  className="py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteGoal}
+                  disabled={isSaving}
+                  className="py-2.5 rounded-xl text-xs font-black uppercase bg-red-500 text-white cursor-pointer disabled:opacity-50"
+                >
+                  {t('common.confirm')}
+                </button>
+              </div>
+            </div>
           )}
         </form>
       </div>
@@ -379,7 +404,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
   }
 
   // ==========================================
-  // SUB-TELA 2: DETALHE DA CAIXINHA (GUARDAR / RESGATAR)
+  // SUB-TELA 2: DETALHE DA CAIXINHA
   // ==========================================
   if (selectedGoal) {
     const saved = balanceByGoal.get(selectedGoal.id) || 0;
@@ -392,39 +417,48 @@ export function GoalsView({ onBack }: GoalsViewProps) {
       .sort((a, b) => b.date.localeCompare(a.date));
 
     return (
-      <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <div
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+        className="p-5 max-w-md mx-auto flex flex-col gap-5"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
             <button
+              type="button"
               onClick={() => {
                 setSelectedGoalId(null);
                 setMoveMode(null);
                 setError(null);
               }}
+              aria-label={t('common.back')}
               style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
-              className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
+              className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform shrink-0"
             >
               <ArrowLeft size={20} />
             </button>
-            <div>
+            <div className="min-w-0">
               <span
                 style={{ color: currentTheme.secondaryText }}
                 className="text-[10px] font-bold uppercase tracking-widest block"
               >
-                Caixinha
+                {t('goals.singular')}
               </span>
-              <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
+              <h2
+                style={{ color: currentTheme.primaryText }}
+                className="text-lg font-black uppercase truncate"
+              >
                 {selectedGoal.name}
               </h2>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={() => openEdit(selectedGoal)}
+            aria-label={t('goals.editAction')}
+            title={t('goals.editAction')}
             style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
-            className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
-            title="Editar caixinha"
+            className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform shrink-0"
           >
             <Pencil size={18} />
           </button>
@@ -456,13 +490,13 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Total Guardado
+              {t('goals.totalSaved')}
             </span>
             <div style={{ color: currentTheme.primaryText }} className="text-3xl font-black mt-0.5">
-              {formatBRL(saved)}
+              {formatCurrency(saved, locale)}
             </div>
             <span style={{ color: currentTheme.secondaryText }} className="text-xs font-medium">
-              de {formatBRL(target)} ({pct}%)
+              {t('goals.ofTarget', { target: formatCurrency(target, locale), pct })}
             </span>
           </div>
 
@@ -494,7 +528,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
             className="py-3.5 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
           >
             <ArrowUpCircle size={18} />
-            Guardar
+            {t('goals.depositBtn')}
           </button>
 
           <button
@@ -509,7 +543,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
             className="py-3.5 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
           >
             <ArrowDownCircle size={18} />
-            Resgatar
+            {t('goals.withdrawBtn')}
           </button>
         </div>
 
@@ -524,7 +558,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.primaryText }}
               className="text-xs font-black uppercase"
             >
-              {moveMode === 'deposit' ? 'Quanto deseja guardar?' : 'Quanto deseja resgatar?'}
+              {moveMode === 'deposit' ? t('goals.depositPrompt') : t('goals.withdrawPrompt')}
             </span>
 
             {error && (
@@ -533,7 +567,6 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               </div>
             )}
 
-            {/* Input estilo maquininha */}
             <div
               style={{ backgroundColor: currentTheme.bgDark }}
               className="px-4 py-3 rounded-xl flex items-center gap-2"
@@ -544,12 +577,12 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               <input
                 type="text"
                 inputMode="numeric"
-                value={(moveCents / 100).toLocaleString('pt-BR', {
+                value={(moveCents / 100).toLocaleString(locale, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
                 onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, '');
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                   setMoveCents(Number(digits));
                 }}
                 style={{ color: currentTheme.primaryText }}
@@ -587,7 +620,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
                 style={{ backgroundColor: currentTheme.bgDark, color: currentTheme.secondaryText }}
                 className="py-3 rounded-xl text-xs font-bold uppercase cursor-pointer"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -599,7 +632,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
                 className="py-3 rounded-xl text-xs font-black uppercase flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 {isSubmittingMove ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                Confirmar
+                {t('common.confirm')}
               </button>
             </div>
           </form>
@@ -611,12 +644,12 @@ export function GoalsView({ onBack }: GoalsViewProps) {
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest px-1"
           >
-            Histórico desta Caixinha
+            {t('goals.historyTitle')}
           </span>
 
           {goalHistory.length === 0 ? (
             <p style={{ color: currentTheme.secondaryText }} className="text-xs text-center py-6">
-              Nenhum aporte ou resgate ainda.
+              {t('goals.historyEmpty')}
             </p>
           ) : (
             <div
@@ -625,29 +658,26 @@ export function GoalsView({ onBack }: GoalsViewProps) {
             >
               {goalHistory.map((tx) => {
                 const isDeposit = tx.type === 'EXPENSE';
-                const dateBr = tx.date.split('-').reverse().join('/');
+                const formattedDate = tx.date.split('-').reverse().join('/');
                 return (
-                  <div key={tx.id} className="px-4 py-3 flex items-center justify-between">
+                  <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-2">
                     <div>
                       <span
                         style={{ color: currentTheme.primaryText }}
                         className="text-xs font-bold block"
                       >
-                        {isDeposit ? 'Aporte guardado' : 'Resgate realizado'}
+                        {isDeposit ? t('goals.historyDeposit') : t('goals.historyWithdraw')}
                       </span>
-                      <span
-                        style={{ color: currentTheme.secondaryText }}
-                        className="text-[11px]"
-                      >
-                        {dateBr}
+                      <span style={{ color: currentTheme.secondaryText }} className="text-[11px]">
+                        {formattedDate}
                       </span>
                     </div>
                     <span
-                      className={`text-sm font-black ${
+                      className={`text-sm font-black shrink-0 ${
                         isDeposit ? 'text-emerald-400' : 'text-red-400'
                       }`}
                     >
-                      {isDeposit ? '+' : '-'} {formatBRL(Number(tx.amount))}
+                      {isDeposit ? '+' : '-'} {formatCurrency(Number(tx.amount), locale)}
                     </span>
                   </div>
                 );
@@ -663,11 +693,16 @@ export function GoalsView({ onBack }: GoalsViewProps) {
   // TELA PRINCIPAL: LISTA DE CAIXINHAS
   // ==========================================
   return (
-    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-4">
+    <div
+      style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+      className="p-5 max-w-md mx-auto flex flex-col gap-4"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
+            aria-label={t('common.back')}
             style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
             className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
           >
@@ -678,21 +713,22 @@ export function GoalsView({ onBack }: GoalsViewProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Metas Financeiras
+              {t('goals.subtitle')}
             </span>
             <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
-              Caixinhas
+              {t('goals.title')}
             </h2>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={openCreate}
           style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
           className="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform"
         >
           <Plus size={16} strokeWidth={3} />
-          Nova
+          {t('common.newFem')}
         </button>
       </div>
 
@@ -702,7 +738,7 @@ export function GoalsView({ onBack }: GoalsViewProps) {
           className="p-8 rounded-2xl text-center"
         >
           <p style={{ color: currentTheme.secondaryText }} className="text-xs font-medium">
-            Você ainda não criou nenhuma caixinha. Toque em "+ Nova" para começar!
+            {t('goals.emptyList')}
           </p>
         </div>
       ) : (
@@ -716,35 +752,39 @@ export function GoalsView({ onBack }: GoalsViewProps) {
             return (
               <button
                 key={goal.id}
+                type="button"
                 onClick={() => setSelectedGoalId(goal.id)}
                 style={{ backgroundColor: currentTheme.bgCard }}
                 className="p-4 rounded-2xl text-left flex flex-col gap-3 cursor-pointer active:scale-[0.98] transition-transform"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div
                       style={{ backgroundColor: `${goalColor}25`, color: goalColor }}
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     >
                       <DynamicIcon name={goal.icon} size={20} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span
                         style={{ color: currentTheme.primaryText }}
-                        className="text-sm font-black block"
+                        className="text-sm font-black block truncate"
                       >
                         {goal.name}
                       </span>
                       <span
                         style={{ color: currentTheme.secondaryText }}
-                        className="text-[11px] font-medium"
+                        className="text-[11px] font-medium block truncate"
                       >
-                        {formatBRL(saved)} de {formatBRL(target)}
+                        {t('goals.ofTargetShort', {
+                          saved: formatCurrency(saved, locale),
+                          target: formatCurrency(target, locale),
+                        })}
                       </span>
                     </div>
                   </div>
 
-                  <span style={{ color: goalColor }} className="text-xs font-black">
+                  <span style={{ color: goalColor }} className="text-xs font-black shrink-0">
                     {pct}%
                   </span>
                 </div>

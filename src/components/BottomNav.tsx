@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Home, Flag, BarChart3, Settings, Plus } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 
 export type TabType = 'home' | 'extrato' | 'pitstop' | 'telemetria' | 'garage';
 
@@ -12,23 +12,22 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
-  // Sempre mostra a barra ao trocar de aba
   useEffect(() => {
     setIsVisible(true);
     lastScrollY.current = window.scrollY;
   }, [activeTab]);
 
   useEffect(() => {
-    const HIDE_THRESHOLD = 5; // Precisa rolar 60px para baixo para sumir
-    const SHOW_THRESHOLD = 25; // Rola só 25px para cima e ela já volta
+    const HIDE_THRESHOLD = 24;
+    const SHOW_THRESHOLD = 18;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
-      // Respiro no topo: nos primeiros 80px ela sempre fica visível
       if (currentScrollY <= 40) {
         setIsVisible(true);
         lastScrollY.current = currentScrollY;
@@ -50,8 +49,6 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const { t } = useTranslation();
-
   const navItems = [
     { id: 'home' as TabType, label: t('nav.home'), icon: Home },
     { id: 'extrato' as TabType, label: t('nav.extrato'), icon: Flag },
@@ -65,35 +62,36 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
       style={{
         backgroundColor: currentTheme.bgCard,
         borderTopColor: currentTheme.secondary,
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))', 
+        paddingBottom: 'calc(0.4rem + env(safe-area-inset-bottom, 0px))',
       }}
-      className={`fixed bottom-0 left-0 right-0 h-20 border-t px-2 z-50 transition-all duration-500 ease-in-out ${
+      className={`fixed bottom-0 left-0 right-0 border-t px-2 pt-1.5 z-50 transition-all duration-300 ease-in-out ${
         isVisible
           ? 'translate-y-0 opacity-100'
           : 'translate-y-32 opacity-0 pointer-events-none'
       }`}
     >
-      <div className="max-w-md mx-auto h-full grid grid-cols-5 items-center">
+      <div className="max-w-md mx-auto h-16 grid grid-cols-5 items-center">
         {navItems.map((item) => {
-          // Botão Central: Pneu de F1 (Pit Stop)
           if (item.isCenter) {
             return (
               <div key={item.id} className="flex flex-col items-center justify-center -mt-7">
                 <button
+                  type="button"
+                  aria-label={item.label}
                   onClick={() => onChangeTab('pitstop')}
                   style={{
                     backgroundColor: '#111111',
                     borderColor: currentTheme.primary,
                     boxShadow: `0 6px 20px -4px ${currentTheme.primary}66`,
                   }}
-                  className="w-16 h-16 rounded-full border-[5px] flex items-center justify-center transition-transform active:scale-90 cursor-pointer relative"
+                  className="w-15 h-15 rounded-full border-[5px] flex items-center justify-center transition-transform active:scale-90 cursor-pointer relative"
                 >
                   <div
                     style={{ borderColor: currentTheme.secondary }}
-                    className="w-11 h-11 rounded-full border border-dashed flex items-center justify-center"
+                    className="w-10 h-10 rounded-full border border-dashed flex items-center justify-center"
                   >
                     <Plus
-                      size={26}
+                      size={24}
                       style={{ color: currentTheme.primaryText }}
                       strokeWidth={3}
                     />
@@ -109,13 +107,13 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
             );
           }
 
-          // Abas Normais
           const Icon = item.icon!;
           const isActive = activeTab === item.id;
 
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => onChangeTab(item.id)}
               className="flex flex-col items-center justify-center h-full gap-1 cursor-pointer transition-opacity active:scale-95"
             >

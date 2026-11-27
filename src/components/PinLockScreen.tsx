@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Delete, Loader2, Lock, ShieldAlert } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { api, setAuthToken } from '../api/client';
 
@@ -12,6 +13,7 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
 
 export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
   const { currentTheme } = useTheme();
+  const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +27,13 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
         setAuthToken(res.access_token);
         onUnlocked();
       } catch (err: any) {
-        setError(err.message || 'PIN incorreto.');
+        setError(err.message || t('auth.invalidPin'));
         setPin('');
       } finally {
         setIsLoading(false);
       }
     },
-    [onUnlocked]
+    [onUnlocked, t]
   );
 
   const handleDigit = useCallback(
@@ -56,7 +58,6 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
     setPin((prev) => prev.slice(0, -1));
   }, [isLoading]);
 
-  // Suporte ao teclado físico no PC
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) {
@@ -71,11 +72,14 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
 
   return (
     <div
-      style={{ backgroundColor: currentTheme.bgDark }}
-      className="min-h-screen flex flex-col items-center justify-center p-6 select-none"
+      style={{
+        backgroundColor: currentTheme.bgDark,
+        minHeight: 'calc(100dvh - env(safe-area-inset-top, 0px))',
+        paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+      }}
+      className="flex flex-col items-center justify-center p-6 select-none"
     >
       <div className="w-full max-w-xs flex flex-col items-center gap-8">
-        {/* Ícone + Título */}
         <div className="flex flex-col items-center text-center gap-3">
           <div
             style={{
@@ -102,14 +106,11 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
               style={{ color: currentTheme.secondaryText }}
               className="text-xs font-medium mt-1"
             >
-              {isLoading
-                ? 'Validando acesso...'
-                : 'Digite seu PIN de 6 dígitos'}
+              {isLoading ? t('auth.validating') : t('auth.enterPin')}
             </p>
           </div>
         </div>
 
-        {/* Bolinhas do PIN */}
         <div className="flex items-center gap-3.5">
           {Array.from({ length: PIN_LENGTH }).map((_, idx) => {
             const filled = idx < pin.length;
@@ -130,7 +131,6 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           })}
         </div>
 
-        {/* Mensagem de erro */}
         <div className="min-h-5 flex items-center justify-center">
           {error && (
             <div className="flex items-center gap-1.5 text-red-400 text-xs font-bold">
@@ -140,7 +140,6 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           )}
         </div>
 
-        {/* Teclado Numérico */}
         <div className="grid grid-cols-3 gap-3.5 w-full">
           {KEYS.map((key, idx) => {
             if (key === '') {
@@ -159,7 +158,7 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
                     color: currentTheme.secondaryText,
                   }}
                   className="h-16 rounded-2xl flex items-center justify-center cursor-pointer active:scale-90 transition-transform disabled:opacity-30"
-                  aria-label="Apagar dígito"
+                  aria-label={t('auth.deleteDigit')}
                 >
                   <Delete size={22} />
                 </button>
@@ -188,7 +187,7 @@ export function PinLockScreen({ onUnlocked }: PinLockScreenProps) {
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-semibold uppercase tracking-widest opacity-60"
         >
-          Sessão válida por 7 dias
+          {t('auth.sessionValidity')}
         </span>
       </div>
     </div>

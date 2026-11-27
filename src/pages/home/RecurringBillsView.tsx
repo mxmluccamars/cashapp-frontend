@@ -9,10 +9,14 @@ import {
   CalendarClock,
   Pencil,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { useData } from '../../context/DataContext';
+import { getAppLocale } from '../../i18n';
 import { DynamicIcon } from '../../components/DynamicIcon';
+import { SearchableSelect } from '../../components/SearchableSelect';
 import { MonthSelector } from '../../components/home/MonthSelector';
+import { formatCurrency, normalizeIconName } from '../../utils/format';
 import type { RecurringBill } from '../../types/finance';
 
 interface RecurringBillsViewProps {
@@ -23,9 +27,6 @@ interface RecurringBillsViewProps {
   onBack: () => void;
 }
 
-const formatBRL = (val: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
 export function RecurringBillsView({
   year,
   month,
@@ -34,6 +35,9 @@ export function RecurringBillsView({
   onBack,
 }: RecurringBillsViewProps) {
   const { currentTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const locale = getAppLocale(i18n.language);
+
   const {
     recurringBills,
     transactions,
@@ -46,9 +50,10 @@ export function RecurringBillsView({
   } = useData();
 
   const [editing, setEditing] = useState<RecurringBill | 'new' | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [launchingId, setLaunchingId] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
-  // Campos do formulário
   const [name, setName] = useState('');
   const [amountCents, setAmountCents] = useState(0);
   const [dueDay, setDueDay] = useState('10');
@@ -73,7 +78,6 @@ export function RecurringBillsView({
     [paymentMethods]
   );
 
-  // Prefixo do mês selecionado (ex: "2026-11") para checar o que já foi pago naquele mês
   const selectedMonthNumber = month + 1;
   const currentMonthPrefix = `${year}-${String(selectedMonthNumber).padStart(2, '0')}`;
 
@@ -110,6 +114,7 @@ export function RecurringBillsView({
 
   const openCreate = () => {
     setEditing('new');
+    setConfirmDelete(false);
     setName('');
     setAmountCents(0);
     setDueDay('10');
@@ -121,6 +126,7 @@ export function RecurringBillsView({
 
   const openEdit = (bill: RecurringBill) => {
     setEditing(bill);
+    setConfirmDelete(false);
     setName(bill.name);
     setAmountCents(Math.round(Number(bill.amount) * 100));
     setDueDay(String(bill.due_day));
@@ -136,19 +142,19 @@ export function RecurringBillsView({
     const parsedAmount = amountCents / 100;
 
     if (name.trim().length < 2) {
-      setError('O nome precisa ter pelo menos 2 caracteres.');
+      setError(t('common.minCharsError'));
       return;
     }
     if (parsedAmount <= 0) {
-      setError('Informe um valor mensal maior que zero.');
+      setError(t('recurring.validationAmount'));
       return;
     }
     if (!parsedDay || parsedDay < 1 || parsedDay > 31) {
-      setError('O dia de vencimento deve estar entre 1 e 31.');
+      setError(t('recurring.validationDay'));
       return;
     }
     if (!categoryId) {
-      setError('Selecione uma categoria padrão para facilitar o lançamento.');
+      setError(t('recurring.validationCategory'));
       return;
     }
 
@@ -171,7 +177,7 @@ export function RecurringBillsView({
       }
       setEditing(null);
     } catch (err: any) {
-      setError(err.message || 'Erro ao salvar conta recorrente.');
+      setError(err.message || t('recurring.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -179,31 +185,30 @@ export function RecurringBillsView({
 
   const handleDelete = async () => {
     if (!editing || editing === 'new') return;
-    if (!window.confirm(`Excluir a conta recorrente "${editing.name}"?`)) return;
 
     setIsSaving(true);
     setError(null);
     try {
       await removeRecurringBill(editing.id);
       setEditing(null);
+      setConfirmDelete(false);
     } catch (err: any) {
-      setError(err.message || 'Erro ao excluir conta recorrente.');
+      setError(err.message || t('recurring.deleteError'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Lançamento em 1 clique para o mês selecionado
   const handleLaunchBill = async (bill: RecurringBill) => {
     const targetCategoryId = bill.category_id || expenseCategories[0]?.id;
     if (!targetCategoryId) {
-      alert('Cadastre ou vincule uma categoria de saída nesta conta antes de lançar.');
+      setListError(t('recurring.launchNoCategory'));
       return;
     }
 
     setLaunchingId(bill.id);
+    setListError(null);
     try {
-      // Ajusta o dia para não estourar meses menores (ex: dia 31 em fevereiro vira 28)
       const lastDayOfMonth = new Date(year, selectedMonthNumber, 0).getDate();
       const safeDay = Math.min(bill.due_day, lastDayOfMonth);
       const txDate = `${currentMonthPrefix}-${String(safeDay).padStart(2, '0')}`;
@@ -219,7 +224,7 @@ export function RecurringBillsView({
         installments: 1,
       });
     } catch (err: any) {
-      alert(err.message || 'Erro ao lançar conta recorrente.');
+      setListError(err.message || t('recurring.launchError'));
     } finally {
       setLaunchingId(null);
     }
@@ -232,11 +237,15 @@ export function RecurringBillsView({
     const isNew = editing === 'new';
 
     return (
-      <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
+      <div
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+        className="p-5 max-w-md mx-auto flex flex-col gap-5"
+      >
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setEditing(null)}
+            aria-label={t('common.back')}
             style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
             className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
           >
@@ -247,10 +256,10 @@ export function RecurringBillsView({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Contas Recorrentes
+              {t('recurring.formSubtitle')}
             </span>
             <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
-              {isNew ? 'Nova Assinatura' : 'Editar Assinatura'}
+              {isNew ? t('recurring.newTitle') : t('recurring.editTitle')}
             </h2>
           </div>
         </div>
@@ -267,13 +276,13 @@ export function RecurringBillsView({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase block mb-1"
             >
-              Nome da Conta / Assinatura *
+              {t('recurring.nameLabel')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Netflix, Internet Fibra, Academia..."
+              placeholder={t('recurring.namePlaceholder')}
               style={{ color: currentTheme.primaryText }}
               className="w-full text-sm font-semibold bg-transparent focus:outline-none"
               required
@@ -281,13 +290,12 @@ export function RecurringBillsView({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Valor Mensal estilo maquininha */}
             <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
               <label
                 style={{ color: currentTheme.secondaryText }}
                 className="text-[10px] font-bold uppercase block mb-1"
               >
-                Valor Mensal *
+                {t('recurring.monthlyAmountLabel')}
               </label>
               <div className="flex items-center gap-1">
                 <span style={{ color: currentTheme.secondaryText }} className="text-xs font-bold">
@@ -296,12 +304,12 @@ export function RecurringBillsView({
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={(amountCents / 100).toLocaleString('pt-BR', {
+                  value={(amountCents / 100).toLocaleString(locale, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, '');
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                     setAmountCents(Number(digits));
                   }}
                   style={{ color: currentTheme.primaryText }}
@@ -316,10 +324,11 @@ export function RecurringBillsView({
                 style={{ color: currentTheme.secondaryText }}
                 className="text-[10px] font-bold uppercase block mb-1"
               >
-                Dia Vencimento *
+                {t('recurring.dueDayLabel')}
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 max={31}
                 value={dueDay}
@@ -332,73 +341,51 @@ export function RecurringBillsView({
             </div>
           </div>
 
-          {/* Categoria Padrão */}
-          <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Categoria Padrão *
-            </label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              style={{ color: currentTheme.primaryText, backgroundColor: currentTheme.bgCard }}
-              className="w-full text-sm font-semibold focus:outline-none cursor-pointer"
-              required
-            >
-              {expenseCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            label={t('recurring.categoryLabel')}
+            placeholder={t('recurring.categoryPlaceholder')}
+            options={expenseCategories.map((cat) => ({
+              id: cat.id,
+              name: cat.name,
+              icon: cat.icon,
+              color: cat.color,
+            }))}
+            value={categoryId}
+            onChange={setCategoryId}
+            required
+          />
 
-          {/* Forma de Pagamento Padrão */}
-          <div style={{ backgroundColor: currentTheme.bgCard }} className="p-3.5 rounded-xl">
-            <label
-              style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase block mb-1"
-            >
-              Forma de Pagamento Padrão
-            </label>
-            <select
-              value={paymentMethodId}
-              onChange={(e) => setPaymentMethodId(e.target.value)}
-              style={{ color: currentTheme.primaryText, backgroundColor: currentTheme.bgCard }}
-              className="w-full text-sm font-semibold focus:outline-none cursor-pointer"
-            >
-              <option value="">Nenhuma</option>
-              {paymentMethods.map((pm) => (
-                <option key={pm.id} value={pm.id}>
-                  {pm.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SearchableSelect
+            label={t('recurring.paymentLabel')}
+            placeholder={t('recurring.paymentPlaceholder')}
+            options={paymentMethods.map((pm) => ({
+              id: pm.id,
+              name: pm.name,
+              icon: normalizeIconName(pm.icon),
+              color: pm.color,
+            }))}
+            value={paymentMethodId}
+            onChange={setPaymentMethodId}
+          />
 
-          {/* Toggle Ativa / Pausada */}
           <button
             type="button"
             onClick={() => setIsActive((prev) => !prev)}
             style={{ backgroundColor: currentTheme.bgCard }}
-            className="p-4 rounded-xl flex items-center justify-between cursor-pointer text-left"
+            className="p-4 rounded-xl flex items-center justify-between gap-3 cursor-pointer text-left"
           >
             <div>
               <span
                 style={{ color: currentTheme.primaryText }}
                 className="text-sm font-bold block"
               >
-                Assinatura Ativa
+                {t('recurring.activeToggleTitle')}
               </span>
               <span
                 style={{ color: currentTheme.secondaryText }}
                 className="text-[11px] font-medium"
               >
-                {isActive
-                  ? 'Entra na previsão mensal de custos fixos'
-                  : 'Pausada / Cancelada (mantém histórico)'}
+                {isActive ? t('recurring.activeToggleOn') : t('recurring.activeToggleOff')}
               </span>
             </div>
 
@@ -420,22 +407,58 @@ export function RecurringBillsView({
             type="submit"
             disabled={isSaving}
             style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
-            className="py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-2"
+            className="w-full py-4 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 mt-2"
           >
-            {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Check size={20} strokeWidth={3} />}
-            {isNew ? 'Criar Assinatura' : 'Salvar Alterações'}
+            {isSaving ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <Check size={20} strokeWidth={3} />
+            )}
+            {isNew ? t('recurring.createBtn') : t('common.saveChanges')}
           </button>
 
-          {!isNew && (
+          {!isNew && !confirmDelete && (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setConfirmDelete(true)}
               disabled={isSaving}
-              className="py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
+              className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-transform"
             >
               <Trash2 size={16} />
-              Excluir Assinatura
+              {t('recurring.deleteBtn')}
             </button>
+          )}
+
+          {!isNew && confirmDelete && (
+            <div className="p-4 rounded-2xl bg-red-500/15 border border-red-500/30 flex flex-col gap-3">
+              <div className="text-center">
+                <p className="text-xs font-black uppercase text-red-300">
+                  {t('common.confirmDeleteTitle')}
+                </p>
+                <p className="text-xs text-red-200/80 mt-0.5">
+                  {t('common.confirmDeleteMessage', { name: editing.name })}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={isSaving}
+                  style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
+                  className="py-2.5 rounded-xl text-xs font-bold uppercase cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isSaving}
+                  className="py-2.5 rounded-xl text-xs font-black uppercase bg-red-500 text-white cursor-pointer disabled:opacity-50"
+                >
+                  {t('common.confirm')}
+                </button>
+              </div>
+            </div>
           )}
         </form>
       </div>
@@ -446,12 +469,16 @@ export function RecurringBillsView({
   // TELA PRINCIPAL: LISTA DE CONTAS RECORRENTES
   // ==========================================
   return (
-    <div className="p-5 pb-10 max-w-md mx-auto flex flex-col gap-5">
-      {/* Header */}
+    <div
+      style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+      className="p-5 max-w-md mx-auto flex flex-col gap-5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
+            aria-label={t('common.back')}
             style={{ backgroundColor: currentTheme.bgCard, color: currentTheme.primaryText }}
             className="p-2.5 rounded-xl cursor-pointer active:scale-90 transition-transform"
           >
@@ -462,25 +489,25 @@ export function RecurringBillsView({
               style={{ color: currentTheme.secondaryText }}
               className="text-[10px] font-bold uppercase tracking-widest block"
             >
-              Custos Fixos
+              {t('recurring.subtitle')}
             </span>
             <h2 style={{ color: currentTheme.primaryText }} className="text-lg font-black uppercase">
-              Recorrentes
+              {t('recurring.title')}
             </h2>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={openCreate}
           style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
           className="px-3.5 py-2.5 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform"
         >
           <Plus size={16} strokeWidth={3} />
-          Nova
+          {t('common.newFem')}
         </button>
       </div>
 
-      {/* Navegador de Mês sincronizado com a Home */}
       <MonthSelector
         year={year}
         month={month}
@@ -488,36 +515,51 @@ export function RecurringBillsView({
         onNext={onNextMonth}
       />
 
+      {listError && (
+        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500 text-red-200 text-xs font-bold">
+          {listError}
+        </div>
+      )}
+
       {/* Card Resumo do Mês */}
       <div style={{ backgroundColor: currentTheme.bgCard }} className="p-5 rounded-3xl flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <span
               style={{ color: currentTheme.secondaryText }}
-              className="text-[10px] font-bold uppercase tracking-widest block"
+              className="text-[10px] font-bold uppercase tracking-widest block truncate"
             >
-              Comprometido / Mês ({activeBills.length} ativas)
+              {t('recurring.committedLabel', {
+                count: activeBills.length,
+                status:
+                  activeBills.length === 1
+                    ? t('home.activeSingular')
+                    : t('home.activePlural'),
+              })}
             </span>
             <div style={{ color: currentTheme.primaryText }} className="text-2xl font-black mt-0.5">
-              {formatBRL(totalCommitted)}
+              {formatCurrency(totalCommitted, locale)}
             </div>
           </div>
           <div
             style={{ backgroundColor: `${currentTheme.primary}20`, color: currentTheme.primary }}
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           >
             <CalendarClock size={20} />
           </div>
         </div>
 
-        <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+        <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2 text-xs">
           <span style={{ color: currentTheme.secondaryText }}>
-            Pago neste mês: <strong className="text-emerald-400">{formatBRL(totalPaidThisMonth)}</strong>
+            {t('recurring.paidThisMonth')}{' '}
+            <strong className="text-emerald-400">
+              {formatCurrency(totalPaidThisMonth, locale)}
+            </strong>
           </span>
           <span style={{ color: currentTheme.secondaryText }}>
-            Falta:{' '}
+            {t('recurring.remainingThisMonth')}{' '}
             <strong style={{ color: currentTheme.primaryText }}>
-              {formatBRL(Math.max(totalCommitted - totalPaidThisMonth, 0))}
+              {formatCurrency(Math.max(totalCommitted - totalPaidThisMonth, 0), locale)}
             </strong>
           </span>
         </div>
@@ -529,13 +571,13 @@ export function RecurringBillsView({
           style={{ color: currentTheme.secondaryText }}
           className="text-[10px] font-bold uppercase tracking-widest px-1"
         >
-          Ativas
+          {t('recurring.activeSection')}
         </span>
 
         {activeBills.length === 0 ? (
           <div style={{ backgroundColor: currentTheme.bgCard }} className="p-6 rounded-2xl text-center">
             <p style={{ color: currentTheme.secondaryText }} className="text-xs">
-              Nenhuma conta recorrente ativa.
+              {t('recurring.emptyActive')}
             </p>
           </div>
         ) : (
@@ -553,9 +595,10 @@ export function RecurringBillsView({
                   style={{ backgroundColor: currentTheme.bgCard }}
                   className="p-4 rounded-2xl flex items-center justify-between gap-3"
                 >
-                  <div
+                  <button
+                    type="button"
                     onClick={() => openEdit(bill)}
-                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer text-left"
                   >
                     <div
                       style={{ backgroundColor: `${catColor}22`, color: catColor }}
@@ -575,17 +618,17 @@ export function RecurringBillsView({
                         style={{ color: currentTheme.secondaryText }}
                         className="text-[11px] font-medium block truncate"
                       >
-                        Dia {bill.due_day} • {formatBRL(Number(bill.amount))}
+                        {t('recurring.dueDayBadge', { day: bill.due_day })} •{' '}
+                        {formatCurrency(Number(bill.amount), locale)}
                         {pm ? ` • ${pm.name}` : ''}
                       </span>
                     </div>
-                  </div>
+                  </button>
 
-                  {/* Ação: Pago ou Lançar 1 clique */}
                   {isPaid ? (
                     <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 text-[11px] font-black uppercase flex items-center gap-1 shrink-0">
                       <CheckCircle2 size={14} />
-                      Pago
+                      {t('recurring.paidBadge')}
                     </span>
                   ) : (
                     <button
@@ -595,7 +638,11 @@ export function RecurringBillsView({
                       style={{ backgroundColor: currentTheme.primary, color: currentTheme.primaryText }}
                       className="px-3 py-1.5 rounded-xl text-[11px] font-black uppercase flex items-center gap-1 cursor-pointer active:scale-95 transition-transform disabled:opacity-50 shrink-0"
                     >
-                      {isLaunching ? <Loader2 className="animate-spin" size={14} /> : 'Lançar'}
+                      {isLaunching ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        t('recurring.launchBtn')
+                      )}
                     </button>
                   )}
                 </div>
@@ -612,7 +659,7 @@ export function RecurringBillsView({
             style={{ color: currentTheme.secondaryText }}
             className="text-[10px] font-bold uppercase tracking-widest px-1"
           >
-            Pausadas / Canceladas
+            {t('recurring.pausedSection')}
           </span>
 
           <div
@@ -622,21 +669,23 @@ export function RecurringBillsView({
             {pausedBills.map((bill) => (
               <button
                 key={bill.id}
+                type="button"
                 onClick={() => openEdit(bill)}
-                className="w-full px-4 py-3 flex items-center justify-between cursor-pointer"
+                className="w-full px-4 py-3 flex items-center justify-between gap-2 cursor-pointer"
               >
-                <div className="text-left">
+                <div className="text-left min-w-0">
                   <span
                     style={{ color: currentTheme.primaryText }}
-                    className="text-xs font-bold block line-through"
+                    className="text-xs font-bold block line-through truncate"
                   >
                     {bill.name}
                   </span>
                   <span style={{ color: currentTheme.secondaryText }} className="text-[11px]">
-                    Dia {bill.due_day} • {formatBRL(Number(bill.amount))}
+                    {t('recurring.dueDayBadge', { day: bill.due_day })} •{' '}
+                    {formatCurrency(Number(bill.amount), locale)}
                   </span>
                 </div>
-                <Pencil size={14} style={{ color: currentTheme.secondaryText }} />
+                <Pencil size={14} style={{ color: currentTheme.secondaryText }} className="shrink-0" />
               </button>
             ))}
           </div>
