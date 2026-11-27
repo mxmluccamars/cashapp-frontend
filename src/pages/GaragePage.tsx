@@ -9,7 +9,6 @@ import {
   SlidersHorizontal,
   Lock,
   RefreshCw,
-  Cog,
   Server,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
